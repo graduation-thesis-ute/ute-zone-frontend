@@ -1,12 +1,65 @@
-import React from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Login from "./views/Login";
+import Register from "./views/Register";
+import ForgotPassword from "./views/ForgotPassword";
+import Home from "./views/Home";
+import Verify from "./views/Verify";
+// import PostPage from "./views/PostPage";
+// import Friend from "./views/Friend";
+import NotFound from "./views/NotFound";
+import Loading from "./views/Loading";
+import { useEffect, useState } from "react";
+import useFetch from "./hooks/useFetch";
+import { ToastContainer } from "react-toastify";
 
 const App = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { post, loading } = useFetch();
+
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await localStorage.getItem("accessToken");
+      const res = await post("/v1/user/verify-token", { accessToken: token });
+      if (res.result) {
+        setIsAuthenticated(true);
+      } else {
+        await localStorage.removeItem("accessToken");
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkToken();
+  }, []);
+
   return (
-    <div className="bg-gray-100 h-screen flex items-center justify-center">
-      <h1 className="text-xl text-red-900 font-bold">
-        Hello Vite + React + Tailwind CSS
-      </h1>
-    </div>
+    <>
+      {loading ? (
+        <Loading />
+      ) : (
+        <>
+          <BrowserRouter>
+            <Routes>
+              {isAuthenticated ? (
+                <>
+                  <Route path="/" element={<Home />} />
+                  {/* <Route path="/friends" element={<Friend />} /> */}
+                  {/* <Route path="/postPage" element={<PostPage />} /> */}
+                </>
+              ) : (
+                <>
+                  <Route path="/" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/verify" element={<Verify />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                </>
+              )}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+          <ToastContainer />
+        </>
+      )}
+    </>
   );
 };
 
