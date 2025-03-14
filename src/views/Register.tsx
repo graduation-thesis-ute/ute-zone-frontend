@@ -165,10 +165,10 @@ const Register = () => {
         <div className="text-white">
           <img
             src={UTELogo}
-            alt="UTE Zalo logo"
+            alt="UTE Zone logo"
             className="w-full md:w-1/4 lg:w-1/6 mb-4"
           />
-          <h1 className="text-4xl font-bold mb-4">UTE Zalo</h1>
+          <h1 className="text-4xl font-bold mb-4">UTE Zone</h1>
           <img src={RegisterPageLogo} alt="Illustration" className="mb-4" />
         </div>
       </div>

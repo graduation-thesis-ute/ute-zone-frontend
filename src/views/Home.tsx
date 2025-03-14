@@ -237,7 +237,7 @@ const Home = () => {
             <div className="flex flex-col items-center justify-center h-full space-y-4 bg-gray-100 p-6 rounded-lg shadow-lg">
               <p className="text-lg font-semibold text-gray-800">
                 Chào mừng đến với{" "}
-                <span className="text-blue-600">UTE Zalo</span>
+                <span className="text-blue-600">UTE Zone</span>
               </p>
               <img
                 src={WelcomeIcon}
