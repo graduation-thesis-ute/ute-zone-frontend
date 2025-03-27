@@ -9,15 +9,14 @@ interface PageProfileCardProps {
 }
 
 const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, onSettingsClick }) => {
-  console.log(page);
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
       onClick={() => onPageClick(page._id)}
     >
       {/* Cover Image */}
-      <div className="h-32 bg-gray-200 relative">z
-        {page.coverUrl && page.coverUrl !== null ? (
+      <div className="h-32 bg-gray-200 relative">
+        {page.coverUrl ? (
           <img
             src={page.coverUrl}
             alt={`${page.name} cover`}
@@ -29,7 +28,7 @@ const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, on
         {/* Avatar */}
         <div className="absolute -bottom-12 left-4">
           <div className="w-24 h-24 rounded-full border-4 border-white bg-gray-200 overflow-hidden">
-            {page.avatarUrl && page.avatarUrl !== null ? (
+            {page.avatarUrl ? (
               <img
                 src={page.avatarUrl}
                 alt={`${page.name} avatar`}

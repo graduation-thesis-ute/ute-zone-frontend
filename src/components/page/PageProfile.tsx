@@ -87,7 +87,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     <div className="bg-gray-50 min-h-screen">
       {/* Cover Photo */}
       <div className="h-64 bg-gray-200 relative">
-        {page.coverUrl && page.coverUrl !== null ? (
+        {page.coverUrl ? (
           <img
             src={page.coverUrl}
             alt="Page cover"
@@ -99,7 +99,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
         {/* Profile Picture */}
         <div className="absolute -bottom-16 left-8">
           <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md">
-            {page.avatarUrl && page.avatarUrl !== null ? (
+            {page.avatarUrl ? (
               <img
                 src={page.avatarUrl}
                 alt="Page avatar"
