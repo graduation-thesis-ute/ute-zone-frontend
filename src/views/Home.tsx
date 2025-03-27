@@ -11,13 +11,13 @@ import FriendsList from "../components/friend/FriendsList";
 import GroupList from "../components/friend/GroupList";
 import FriendRequests from "../components/friend/FriendRequests";
 import PostListItem from "../components/post/pages/PostListItem";
-//import MyPosts from "../components/post/pages/MyPosts";
 import MyPosts from "../components/post/pages/MyPosts";
 import FriendsPosts from "../components/post/pages/FriendsPosts";
 import CommunityPosts from "../components/post/pages/CommunityPosts";
+import Page from "../views/Page";
 import useSocketChat from "../hooks/useSocketChat";
 import { remoteUrl } from "../types/constant";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Bookmark, Users, Globe } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
 import { useProfile } from "../types/UserContext";
@@ -26,6 +26,7 @@ const Home = () => {
   const [selectedSection, setSelectedSection] = useState("messages");
   const [selectedFriendSection, setSelectedFriendSection] = useState("friends");
   const [selectedPostSection, setSelectedPostSection] = useState("posts");
+  const [selectedPageType, setSelectedPageType] = useState("my-pages"); // Add state for page type
   const [userCurrent, setUserCurrent] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
@@ -83,18 +84,12 @@ const Home = () => {
   }, [get]);
 
   const fetchConversations = useCallback(async () => {
-    // if (selectedSection !== "messages" || !userCurrent) return;
     try {
       const response = await get("/v1/conversation/list", {
         isPaged: 0,
       });
       const conversations = response.data.content;
       console.log("Fetching conversations...", conversations);
-      // const filteredConversations = conversations.filter(
-      //   (conversation: Conversation) =>
-      //     conversation.lastMessage || conversation.kind === 1
-      // );
-      // setConversations(filteredConversations);
       setConversations(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -110,15 +105,15 @@ const Home = () => {
       fetchConversations();
     }
   }, [selectedSection, userCurrent, fetchConversations]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsLargeScreen(window.innerWidth >= 1024);
     };
     window.addEventListener("resize", handleResize);
-
-    // Xóa sự kiện lắng nghe khi component unmount
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
   const handleMessageChange = useCallback(() => {
     if (selectedSection === "messages" && userCurrent) {
       console.log("Message changed, updating conversations...");
@@ -152,8 +147,8 @@ const Home = () => {
 
   const handleUpdateConversation = useCallback(() => {
     console.log("Conversation updated in Home");
-    // handleMessageChange();
   }, []);
+
   useSocketChat({
     userId: userCurrent?._id,
     remoteUrl,
@@ -217,6 +212,45 @@ const Home = () => {
             selectedPostSection={selectedPostSection}
             setSelectedPostSection={setSelectedPostSection}
           />
+        ) : selectedSection === "pages" ? (
+          <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Pages</h2>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setSelectedPageType("my-pages")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "my-pages"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Bookmark size={20} />
+                <span>Trang của tôi</span>
+              </button>
+              <button
+                onClick={() => setSelectedPageType("followed")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "followed"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Trang đã follow</span>
+              </button>
+              <button
+                onClick={() => setSelectedPageType("community")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "community"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Globe size={20} />
+                <span>Trang cộng đồng</span>
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -275,12 +309,15 @@ const Home = () => {
               )}
             </div>
 
-            {/* Phần thông báo */}
             {isLargeScreen && (
               <div className="flex-1 bg-gray-100 p-4">
                 <NotificationPanel />
               </div>
             )}
+          </div>
+        ) : selectedSection === "pages" ? (
+          <div className="h-full">
+            <Page pageId={selectedPageType} setSelectedPageType={setSelectedPageType} />
           </div>
         ) : null}
       </div>

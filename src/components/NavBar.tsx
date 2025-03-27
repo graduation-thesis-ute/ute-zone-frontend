@@ -6,6 +6,8 @@ import {
   Settings,
   User,
   LogOut,
+  MessageSquare,
+  Bookmark,
 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
@@ -131,7 +133,24 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
           />
         </button>
 
-       
+        <button
+          data-tooltip-id="tooltip-pages"
+          data-tooltip-content="Trang"
+          onClick={() => {
+            setSelectedSection("pages");
+            setActiveSection("pages");
+          }}
+          className={`focus:outline-none ${
+            activeSection === "pages" ? "text-yellow-400" : ""
+          }`}
+        >
+          <Bookmark
+            size={24}
+            className={`transition-transform ${
+              activeSection === "pages" ? "scale-125" : "hover:scale-110"
+            }`}
+          />
+        </button>
 
         <button
           data-tooltip-id="tooltip-logout"
