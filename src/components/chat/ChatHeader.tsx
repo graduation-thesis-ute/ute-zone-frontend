@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit, UserPlus, Settings, LogOut } from "lucide-react";
+import { Edit, UserPlus, Settings, LogOut, Video } from "lucide-react";
 import UserIcon from "../../assets/user_icon.png";
 import MessageSearch from "./MessageSearch";
 import { Conversation } from "../../models/profile/chat";
@@ -16,6 +16,7 @@ interface ChatHeaderProps {
   onLeaveGroupClick: () => void;
   onMemberListClick: () => void;
   onMessageSelect: (messageId: string) => void;
+  onStartVideoCall: () => void; // Thêm prop mới
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -30,6 +31,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   onLeaveGroupClick,
   onMemberListClick,
   onMessageSelect,
+  onStartVideoCall,
 }) => {
   return (
     <div className="bg-white p-4 border-b shadow-sm flex items-center justify-between">
@@ -76,7 +78,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           userCurrent={userCurrent}
           onMessageSelect={onMessageSelect}
         />
-
+        {/* Thêm nút Video Call */}
+        <button
+          onClick={onStartVideoCall}
+          className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+        >
+          <Video size={20} />
+        </button>
         {conversation.kind === 1 && (
           <button
             onClick={onAddMemberClick}
@@ -90,7 +98,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             <UserPlus size={20} />
           </button>
         )}
-
         {isOwner === 1 && conversation.kind === 1 && (
           <button
             onClick={onManageMembersClick}
@@ -99,7 +106,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             <Settings size={20} />
           </button>
         )}
-
         {isOwner !== 1 && conversation.kind === 1 && (
           <button
             onClick={onLeaveGroupClick}
