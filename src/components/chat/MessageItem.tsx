@@ -22,7 +22,7 @@ interface MessageItemProps {
   onCancelEdit: () => void;
   onDeleteMessage: (messageId: string) => void;
   onReaction: (messageId: string) => void;
-  onToggleDropdown: (messageId: string) => void;
+  onToggleDropdown: (messageId: string | null) => void;
   activeDropdown: string | null;
   onAvatarClick: (user: any) => void;
   onUpdateMessage: (
@@ -181,7 +181,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                       decrypt(message.content, userCurrent.secretKey),
                       message.imageUrl
                     );
-                    onToggleDropdown(message._id);
+                    onToggleDropdown(null);
                   }}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
