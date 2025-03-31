@@ -3,6 +3,7 @@ import { Plus, Loader2, Search, Filter } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { Page, PageResponse } from '../../models/page/Page';
 import PageProfileCard from './PageProfileCard';
+import CreatePageDialog from './CreatePageDialog';
 
 interface MyPageDetailProps {
   setSelectedPageType: (type: string) => void;
@@ -15,6 +16,7 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [isCreatePageOpen, setIsCreatePageOpen] = useState(false);
 
   const { get } = useFetch();
 
@@ -75,6 +77,11 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
     setSelectedPageType(`${pageId}/settings`);
   };
 
+  const handleCreatePageSuccess = () => {
+    fetchMyPages();
+    setIsCreatePageOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -117,7 +124,7 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-3xl font-extrabold text-gray-900">Trang của tôi</h1>
               <button
-                onClick={handleCreatePage}
+                onClick={() => setIsCreatePageOpen(true)}
                 className="flex items-center space-x-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-md"
               >
                 <Plus size={20} className="stroke-2" />
@@ -193,7 +200,7 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
                 : "Bắt đầu bằng việc tạo trang của riêng bạn"}
             </p>
             <button
-              onClick={handleCreatePage}
+              onClick={() => setIsCreatePageOpen(true)}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
               Tạo trang mới
@@ -213,6 +220,12 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
           ))}
         </div>
       </div>
+
+      <CreatePageDialog
+        isOpen={isCreatePageOpen}
+        onClose={() => setIsCreatePageOpen(false)}
+        onSuccess={handleCreatePageSuccess}
+      />
     </div>
   );
 };

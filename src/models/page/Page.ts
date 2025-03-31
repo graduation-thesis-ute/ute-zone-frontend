@@ -2,8 +2,8 @@ export interface Page {
   _id: string;
   name: string;
   description: string;
-  avatarUrl: string | null;
-  coverUrl: string | null;
+  avatarUrl: string;
+  coverUrl: string;
   category: string;
   createdAt: string;
   totalFollowers: number;

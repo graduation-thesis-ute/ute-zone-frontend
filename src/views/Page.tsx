@@ -4,7 +4,7 @@ import PageProfile from '../components/page/PageProfile';
 import FollowedPageDetail from '../components/page/FollowedPageDetail';
 import CommunityPageFeed from '../components/page/CommunityPageFeed';
 import SuggestedPages from '../components/page/SuggestedPages';
-import CreatePage from '../components/page/CreatePage';
+import CreatePageDialog from '../components/page/CreatePageDialog';
 import useFetch from '../hooks/useFetch';
 
 interface PageProps {
@@ -21,6 +21,7 @@ const Page: React.FC<PageProps> = ({ pageId, setSelectedPageType }) => {
       try {
         // If pageId is "my-pages", "followed", "community", or "create-page", don't fetch
         if (pageId === "my-pages" || pageId === "followed" || pageId === "community" || pageId === "create-page") {
+          setPageData(null);
           return;
         }
 
@@ -38,16 +39,16 @@ const Page: React.FC<PageProps> = ({ pageId, setSelectedPageType }) => {
   // If pageId is "my-pages", "followed", or "community", show respective components
   if (pageId === "my-pages" || pageId === "followed" || pageId === "community") {
     return (
-      <div className="h-full flex">
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto">
+      <div className="h-screen flex overflow-hidden">
+        {/* Main Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
           {pageId === 'my-pages' && <MyPageDetail setSelectedPageType={setSelectedPageType} />}
           {pageId === 'followed' && <FollowedPageDetail />}
           {pageId === 'community' && <CommunityPageFeed />}
         </div>
 
-        {/* Suggested Pages Sidebar */}
-        <div className="w-1/3 border-l bg-gray-50 overflow-auto">
+        {/* Sidebar - Fixed position */}
+        <div className="w-1/3 border-l bg-gray-50 overflow-y-auto fixed-sidebar">
           <SuggestedPages />
         </div>
       </div>
@@ -56,11 +57,20 @@ const Page: React.FC<PageProps> = ({ pageId, setSelectedPageType }) => {
 
   // If pageId is "create-page", show CreatePage component
   if (pageId === "create-page") {
-    return <CreatePage setSelectedPageType={setSelectedPageType} />;
+    return <CreatePageDialog isOpen={true} onClose={() => {}} onSuccess={() => {}} />;
   }
 
   // Otherwise, show PageProfile for the specific page
-  return <PageProfile pageId={pageId} pageData={pageData} />;
+  return (
+    <div className="h-screen flex overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
+        <PageProfile pageId={pageId} pageData={pageData} />
+      </div>
+      <div className="w-1/3 border-l bg-gray-50 overflow-y-auto fixed-sidebar">
+        <SuggestedPages />
+      </div>
+    </div>
+  );
 };
 
 export default Page;

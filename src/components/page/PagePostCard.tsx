@@ -1,5 +1,5 @@
-import React from 'react';
-import { Heart, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PagePost } from '../../models/page/PagePost';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -9,6 +9,20 @@ interface PagePostCardProps {
 }
 
 const PagePostCard: React.FC<PagePostCardProps> = ({ post }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex > 0 ? prevIndex - 1 : (post.imageUrls?.length || 1) - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex < ((post.imageUrls?.length || 1) - 1) ? prevIndex + 1 : 0
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Post Header */}
@@ -52,12 +66,62 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post }) => {
 
       {/* Post Images */}
       {post.imageUrls && post.imageUrls.length > 0 && (
-        <div className="mt-4">
+        <div className="relative mt-4">
+          {/* Main Image */}
           <img
-            src={post.imageUrls[0]}
-            alt="Post content"
+            src={post.imageUrls[currentImageIndex]}
+            alt={`Post image ${currentImageIndex + 1}`}
             className="w-full max-h-96 object-cover"
           />
+
+          {/* Image Navigation for Multiple Images */}
+          {post.imageUrls.length > 1 && (
+            <>
+              {/* Previous Image Button */}
+              <button 
+                onClick={handlePrevImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+              >
+                <ChevronLeft size={24} />
+              </button>
+
+              {/* Next Image Button */}
+              <button 
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+              >
+                <ChevronRight size={24} />
+              </button>
+
+              {/* Image Count Indicator */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white px-2 py-1 rounded-full text-sm">
+                {currentImageIndex + 1} / {post.imageUrls.length}
+              </div>
+            </>
+          )}
+
+          {/* Thumbnail Preview for Multiple Images */}
+          {post.imageUrls.length > 1 && (
+            <div className="flex justify-center space-x-2 mt-2 px-4 py-2">
+              {post.imageUrls.map((url, index) => (
+                <div 
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`w-12 h-12 rounded-md overflow-hidden cursor-pointer border-2 ${
+                    index === currentImageIndex 
+                      ? 'border-blue-500' 
+                      : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img 
+                    src={url} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -98,4 +162,4 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post }) => {
   );
 };
 
-export default PagePostCard; 
+export default PagePostCard;

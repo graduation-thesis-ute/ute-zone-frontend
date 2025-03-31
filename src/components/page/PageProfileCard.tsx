@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Users, Bookmark, Settings } from 'lucide-react';
 import { Page } from '../../models/page/Page';
 
@@ -9,6 +9,9 @@ interface PageProfileCardProps {
 }
 
 const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, onSettingsClick }) => {
+  const [coverError, setCoverError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
@@ -16,11 +19,13 @@ const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, on
     >
       {/* Cover Image */}
       <div className="h-32 bg-gray-200 relative">
-        {page.coverUrl ? (
+        {page.coverUrl && !coverError ? (
           <img
             src={page.coverUrl}
             alt={`${page.name} cover`}
             className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setCoverError(true)}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-500" />
@@ -28,11 +33,13 @@ const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, on
         {/* Avatar */}
         <div className="absolute -bottom-12 left-4">
           <div className="w-24 h-24 rounded-full border-4 border-white bg-gray-200 overflow-hidden">
-            {page.avatarUrl ? (
+            {page.avatarUrl && !avatarError ? (
               <img
                 src={page.avatarUrl}
                 alt={`${page.name} avatar`}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setAvatarError(true)}
               />
             ) : (
               <div className="w-full h-full bg-gray-300 flex items-center justify-center">

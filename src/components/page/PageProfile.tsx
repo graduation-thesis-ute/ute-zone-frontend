@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Bookmark, Settings, Share2, Bell, Loader2 } from 'lucide-react';
+import { Users, Bookmark, Settings, Share2, Bell, Loader2, Plus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
 import { Page } from '../../models/page/Page';
 import { PagePost, PagePostResponse } from '../../models/page/PagePost';
 import PagePostCard from './PagePostCard';
 import PagePhotos from './PagePhotos';
+import CreatePagePost from './CreatePagePost';
+import { useProfile } from '../../types/UserContext';
 
 interface PageProfileProps {
   pageId: string;
@@ -20,7 +22,10 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [isPageMember, setIsPageMember] = useState(false);
   const { get } = useFetch();
+  const { profile } = useProfile();
 
   const fetchPageDetails = async () => {
     try {
@@ -36,15 +41,41 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
 
   const fetchPagePosts = async () => {
     try {
-      const response = await get(`/v1/page/post/list/${pageId}`, {
+      setIsLoading(true);
+      const response = await get(`/v1/page-post/list`, {  
+        pageId: pageId,
         isPaged: '1',
         page: '0',
         size: '10'
       });
+      console.log("response", response.data.content);
       const data: PagePostResponse = response.data;
+      console.log("data", data);
       setPosts(data.content);
     } catch (err) {
       console.error('Failed to fetch page posts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkPageMembership = async () => {
+    try {
+      const response = await get(`/v1/page-member/members/${pageId}`);
+      console.log("Dữ liệu API:", response.data);
+      if (!profile || !profile._id) {
+        console.log("Profile không tồn tại hoặc không có _id");
+        setIsPageMember(false);
+        return;
+      }
+      console.log("Profile _id:", profile._id);
+      const members = response.data.content || [];
+      const isMember = members.some((member: any) => member.user._id === profile._id);
+      console.log("Kết quả kiểm tra thành viên:", isMember);
+      setIsPageMember(isMember);
+    } catch (err) {
+      console.error('Failed to check page membership:', err);
+      setIsPageMember(false);
     }
   };
 
@@ -53,13 +84,17 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
       if (!pageData) {
         await fetchPageDetails();
         await fetchPagePosts();
+        await checkPageMembership();
       } else {
         setPage(pageData);
       }
     };
-
     fetchPageData();
-  }, [pageId, pageData, get]);
+  }, [pageId, pageData, get, profile]);
+
+  const handlePostCreated = () => {
+    fetchPagePosts();
+  };
 
   if (isLoading) {
     return (
@@ -88,28 +123,17 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
       {/* Cover Photo */}
       <div className="h-64 bg-gray-200 relative">
         {page.coverUrl ? (
-          <img
-            src={page.coverUrl}
-            alt="Page cover"
-            className="w-full h-full object-cover"
-          />
+          <img src={page.coverUrl} alt="Page cover" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
         )}
-        {/* Profile Picture */}
         <div className="absolute -bottom-16 left-8">
           <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-md">
             {page.avatarUrl ? (
-              <img
-                src={page.avatarUrl}
-                alt="Page avatar"
-                className="w-full h-full object-cover"
-              />
+              <img src={page.avatarUrl} alt="Page avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                <span className="text-3xl text-gray-500">
-                  {page.name.charAt(0).toUpperCase()}
-                </span>
+                <span className="text-3xl text-gray-500">{page.name.charAt(0).toUpperCase()}</span>
               </div>
             )}
           </div>
@@ -147,12 +171,18 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
               <Bookmark size={16} />
               <span>{isFollowing ? 'Đã theo dõi' : 'Theo dõi'}</span>
             </button>
+            {isPageMember && (
+              <button
+                onClick={() => setShowCreatePost(true)}
+                className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+              >
+                <Plus size={20} />
+              </button>
+            )}
             <button
               onClick={() => setIsNotificationsEnabled(!isNotificationsEnabled)}
               className={`p-2 rounded-lg ${
-                isNotificationsEnabled
-                  ? 'bg-blue-100 text-blue-500'
-                  : 'bg-gray-100 text-gray-500'
+                isNotificationsEnabled ? 'bg-blue-100 text-blue-500' : 'bg-gray-100 text-gray-500'
               }`}
             >
               <Bell size={20} />
@@ -247,14 +277,20 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
               </div>
             </div>
           )}
-          {activeTab === 'photos' && (
-            <PagePhotos pageId={pageId} />
-          )}
-          {/* Add other tab contents as needed */}
+          {activeTab === 'photos' && <PagePhotos pageId={pageId} />}
         </div>
       </div>
+
+      {/* Create Post Modal */}
+      {showCreatePost && (
+        <CreatePagePost
+          pageId={pageId}
+          onClose={() => setShowCreatePost(false)}
+          onPostCreated={handlePostCreated}
+        />
+      )}
     </div>
   );
 };
 
-export default PageProfile; 
+export default PageProfile;
