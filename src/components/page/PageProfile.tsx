@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, Bookmark, Settings, Share2, Bell, Loader2, Plus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
@@ -7,7 +7,10 @@ import { PagePost, PagePostResponse } from '../../models/page/PagePost';
 import PagePostCard from './PagePostCard';
 import PagePhotos from './PagePhotos';
 import CreatePagePost from './CreatePagePost';
+import PageSettingsDropdown from './PageSettingsDropdown';
 import { useProfile } from '../../types/UserContext';
+import { toast } from 'react-toastify';
+import UpdatePageDialog from './UpdatePageDialog';
 
 interface PageProfileProps {
   pageId: string;
@@ -26,6 +29,9 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [isPageMember, setIsPageMember] = useState(false);
   const { get } = useFetch();
   const { profile } = useProfile();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const [isUpdatePageOpen, setIsUpdatePageOpen] = useState(false);
 
   const fetchPageDetails = async () => {
     try {
@@ -94,6 +100,70 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
 
   const handlePostCreated = () => {
     fetchPagePosts();
+  };
+
+  // Add click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Add handlers for settings actions
+  const handleUpdatePage = () => {
+    setIsUpdatePageOpen(true);
+  };
+
+  const handleUpdatePageSuccess = () => {
+    fetchPageDetails();
+    setIsUpdatePageOpen(false);
+  };
+
+  const handleAddMember = () => {
+    // Navigate to members page
+    window.location.href = `/pages/${pageId}/members`;
+  };
+
+  const handleToggleStatus = async () => {
+    try {
+      const response = await get(`/v1/page/${pageId}/toggle-status`, {
+        isPublished: !page?.isPublished
+      });
+
+      if (response.result) {
+        toast.success(page?.isPublished ? 'Đã ẩn trang' : 'Đã công khai trang');
+        fetchPageDetails();
+      } else {
+        toast.error('Có lỗi xảy ra khi thay đổi trạng thái trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi thay đổi trạng thái trang');
+    }
+    setIsSettingsOpen(false);
+  };
+
+  const handleDeletePage = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa trang này?')) {
+      return;
+    }
+
+    try {
+      const response = await get(`/v1/page/${pageId}/delete`);
+      if (response.result) {
+        toast.success('Đã xóa trang');
+        window.location.href = '/pages';
+      } else {
+        toast.error('Có lỗi xảy ra khi xóa trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi xóa trang');
+    }
+    setIsSettingsOpen(false);
   };
 
   if (isLoading) {
@@ -190,9 +260,23 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
             <button className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200">
               <Share2 size={20} />
             </button>
-            <button className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200">
-              <Settings size={20} />
-            </button>
+            <div ref={settingsRef} className="relative">
+              <button 
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+              >
+                <Settings size={20} />
+              </button>
+              <PageSettingsDropdown
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                onUpdate={handleUpdatePage}
+                onAddMember={handleAddMember}
+                onDelete={handleDeletePage}
+                onToggleStatus={handleToggleStatus}
+                isPublished={page?.isPublished || false}
+              />
+            </div>
           </div>
         </div>
 
@@ -287,6 +371,16 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
           pageId={pageId}
           onClose={() => setShowCreatePost(false)}
           onPostCreated={handlePostCreated}
+        />
+      )}
+
+      {/* Update Page Dialog */}
+      {isUpdatePageOpen && page && (
+        <UpdatePageDialog
+          isOpen={isUpdatePageOpen}
+          onClose={() => setIsUpdatePageOpen(false)}
+          onSuccess={handleUpdatePageSuccess}
+          page={page}
         />
       )}
     </div>

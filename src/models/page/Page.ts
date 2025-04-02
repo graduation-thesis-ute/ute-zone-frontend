@@ -8,10 +8,14 @@ export interface Page {
   createdAt: string;
   totalFollowers: number;
   isOwner: number;
+  isPublished: boolean;
+  updatedAt: string;
 }
 
 export interface PageResponse {
   content: Page[];
-  totalPages: number;
   totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
 } 

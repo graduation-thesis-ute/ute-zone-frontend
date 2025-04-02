@@ -10,13 +10,17 @@ const base64ToBlob = (base64: string, type = "image/jpeg") => {
 };
 
 export const uploadImage = async (
-  image: string | null,
+  image: File | string | null,
   post: (url: string, data: any) => Promise<any>
 ) => {
   if (image) {
-    const imageBlob = base64ToBlob(image);
     const formData = new FormData();
-    formData.append("file", imageBlob, "profile_picture.jpg");
+    if (image instanceof File) {
+      formData.append("file", image, image.name);
+    } else {
+      const imageBlob = base64ToBlob(image);
+      formData.append("file", imageBlob, "profile_picture.jpg");
+    }
     const uploadResponse = await post("/v1/file/upload", formData);
     if (uploadResponse.data) {
       return uploadResponse.data.url;

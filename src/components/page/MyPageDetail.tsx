@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, Search, Filter } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Loader2, Search, Filter, MoreVertical } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { Page, PageResponse } from '../../models/page/Page';
 import PageProfileCard from './PageProfileCard';
 import CreatePageDialog from './CreatePageDialog';
+import PageSettingsDropdown from './PageSettingsDropdown';
+import { toast } from 'react-toastify';
 
 interface MyPageDetailProps {
   setSelectedPageType: (type: string) => void;
@@ -17,8 +19,22 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [isCreatePageOpen, setIsCreatePageOpen] = useState(false);
+  const [settingsOpenForPage, setSettingsOpenForPage] = useState<string | null>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
-  const { get } = useFetch();
+  const { get, post } = useFetch();
+
+  // Close settings dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setSettingsOpenForPage(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchMyPages = async () => {
     try {
@@ -48,7 +64,6 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   useEffect(() => {
     let result = pages;
 
-    // Filter by search term
     if (searchTerm) {
       result = result.filter(page => 
         page.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,7 +71,6 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
       );
     }
 
-    // Filter by category
     if (filterCategory) {
       result = result.filter(page => page.category === filterCategory);
     }
@@ -68,13 +82,59 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
     setSelectedPageType(pageId);
   };
 
-  const handleCreatePage = () => {
-    setSelectedPageType('create-page');
+  const handleSettingsClick = (e: React.MouseEvent, pageId: string) => {
+    e.stopPropagation();
+    setSettingsOpenForPage(settingsOpenForPage === pageId ? null : pageId);
   };
 
-  const handleSettings = (e: React.MouseEvent, pageId: string) => {
-    e.stopPropagation();
-    setSelectedPageType(`${pageId}/settings`);
+  const handleUpdatePage = (pageId: string) => {
+    setSelectedPageType(`${pageId}/update`);
+    setSettingsOpenForPage(null);
+  };
+
+  const handleAddMember = (pageId: string) => {
+    setSelectedPageType(`${pageId}/members`);
+    setSettingsOpenForPage(null);
+  };
+
+  const handleToggleStatus = async (pageId: string) => {
+    try {
+      const page = pages.find(p => p._id === pageId);
+      if (!page) return;
+
+      const response = await post(`/v1/page/${pageId}/toggle-status`, {
+        isPublished: !page.isPublished
+      });
+
+      if (response.result) {
+        toast.success(page.isPublished ? 'Đã ẩn trang' : 'Đã công khai trang');
+        fetchMyPages();
+      } else {
+        toast.error('Có lỗi xảy ra khi thay đổi trạng thái trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi thay đổi trạng thái trang');
+    }
+    setSettingsOpenForPage(null);
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa trang này?')) {
+      return;
+    }
+
+    try {
+      const response = await post(`/v1/page/${pageId}/delete`);
+      if (response.result) {
+        toast.success('Đã xóa trang');
+        fetchMyPages();
+      } else {
+        toast.error('Có lỗi xảy ra khi xóa trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi xóa trang');
+    }
+    setSettingsOpenForPage(null);
   };
 
   const handleCreatePageSuccess = () => {
@@ -211,12 +271,26 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
         {/* Pages List */}
         <div className="space-y-4">
           {filteredPages.map((page) => (
-            <PageProfileCard
-              key={page._id}
-              page={page}
-              onPageClick={handlePageClick}
-              onSettingsClick={handleSettings}
-            />
+            <div key={page._id} className="relative">
+              <div className="relative">
+                <PageProfileCard
+                  page={page}
+                  onPageClick={handlePageClick}
+                  onSettingsClick={handleSettingsClick}
+                />
+                <div ref={settingsRef} className="absolute top-0 right-0">
+                  <PageSettingsDropdown
+                    isOpen={settingsOpenForPage === page._id}
+                    onClose={() => setSettingsOpenForPage(null)}
+                    onUpdate={() => handleUpdatePage(page._id)}
+                    onAddMember={() => handleAddMember(page._id)}
+                    onDelete={() => handleDeletePage(page._id)}
+                    onToggleStatus={() => handleToggleStatus(page._id)}
+                    isPublished={page.isPublished}
+                  />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
