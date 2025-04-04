@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Bookmark, Settings, Share2, Bell, Loader2, Plus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
@@ -11,6 +11,7 @@ import PageSettingsDropdown from './PageSettingsDropdown';
 import { useProfile } from '../../types/UserContext';
 import { toast } from 'react-toastify';
 import UpdatePageDialog from './UpdatePageDialog';
+import PageMembers from './PageMembers';
 
 interface PageProfileProps {
   pageId: string;
@@ -21,17 +22,28 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [page, setPage] = useState<Page | null>(pageData);
   const [posts, setPosts] = useState<PagePost[]>([]);
   const [isLoading, setIsLoading] = useState(!pageData);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [isPageMember, setIsPageMember] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const { get } = useFetch();
   const { profile } = useProfile();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastPostElementRef = useRef<HTMLDivElement>(null);
   const [isUpdatePageOpen, setIsUpdatePageOpen] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
+  const [currentFollowersPage, setCurrentFollowersPage] = useState(0);
+  const [totalFollowersPages, setTotalFollowersPages] = useState(0);
+  const lastFollowerRef = useRef<HTMLDivElement>(null);
+  const followersObserver = useRef<IntersectionObserver | null>(null);
 
   const fetchPageDetails = async () => {
     try {
@@ -45,39 +57,49 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     }
   };
 
-  const fetchPagePosts = async () => {
+  const fetchPagePosts = useCallback(async (pageNum: number) => {
     try {
-      setIsLoading(true);
+      if (pageNum === 0) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
       const response = await get(`/v1/page-post/list`, {  
         pageId: pageId,
         isPaged: '1',
-        page: '0',
+        page: pageNum.toString(),
         size: '10'
       });
-      console.log("response", response.data.content);
+      
       const data: PagePostResponse = response.data;
-      console.log("data", data);
-      setPosts(data.content);
+      
+      if (pageNum === 0) {
+        setPosts(data.content);
+      } else {
+        setPosts(prev => [...prev, ...data.content]);
+      }
+      
+      setTotalPages(data.totalPages);
+      setCurrentPage(pageNum);
     } catch (err) {
       console.error('Failed to fetch page posts:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch posts');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [get, pageId]);
 
   const checkPageMembership = async () => {
     try {
       const response = await get(`/v1/page-member/members/${pageId}`);
-      console.log("Dữ liệu API:", response.data);
       if (!profile || !profile._id) {
-        console.log("Profile không tồn tại hoặc không có _id");
         setIsPageMember(false);
         return;
       }
-      console.log("Profile _id:", profile._id);
       const members = response.data.content || [];
       const isMember = members.some((member: any) => member.user._id === profile._id);
-      console.log("Kết quả kiểm tra thành viên:", isMember);
       setIsPageMember(isMember);
     } catch (err) {
       console.error('Failed to check page membership:', err);
@@ -85,24 +107,102 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     }
   };
 
+  const fetchFollowers = useCallback(async (pageNum: number) => {
+    try {
+      if (pageNum === 0) {
+        setIsLoadingFollowers(true);
+      }
+
+      const response = await get('/v1/page-follower/listPageFollowers', {
+        page: pageId,
+        isPaged: '1',
+        pageNumber: pageNum.toString(),
+        size: '10'
+      });
+
+      const data = response.data;
+      
+      if (pageNum === 0) {
+        setFollowers(data.content);
+      } else {
+        setFollowers(prev => [...prev, ...data.content]);
+      }
+      
+      setTotalFollowersPages(data.totalPages);
+      setCurrentFollowersPage(pageNum);
+    } catch (err) {
+      console.error('Failed to fetch followers:', err);
+    } finally {
+      setIsLoadingFollowers(false);
+    }
+  }, [get, pageId]);
+
   useEffect(() => {
     const fetchPageData = async () => {
       if (!pageData) {
         await fetchPageDetails();
-        await fetchPagePosts();
+        await fetchPagePosts(0);
         await checkPageMembership();
       } else {
         setPage(pageData);
       }
     };
     fetchPageData();
-  }, [pageId, pageData, get, profile]);
+  }, [pageId, pageData, fetchPagePosts, profile]);
+
+  useEffect(() => {
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && currentPage < totalPages - 1 && !isLoadingMore) {
+          fetchPagePosts(currentPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (lastPostElementRef.current) {
+      observer.current.observe(lastPostElementRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [currentPage, totalPages, isLoadingMore, fetchPagePosts]);
+
+  useEffect(() => {
+    if (activeTab === 'followers') {
+      fetchFollowers(0);
+    }
+  }, [activeTab, fetchFollowers]);
+
+  useEffect(() => {
+    if (followersObserver.current) followersObserver.current.disconnect();
+
+    followersObserver.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && currentFollowersPage < totalFollowersPages - 1 && !isLoadingFollowers) {
+          fetchFollowers(currentFollowersPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (lastFollowerRef.current) {
+      followersObserver.current.observe(lastFollowerRef.current);
+    }
+
+    return () => {
+      if (followersObserver.current) followersObserver.current.disconnect();
+    };
+  }, [currentFollowersPage, totalFollowersPages, isLoadingFollowers, fetchFollowers]);
 
   const handlePostCreated = () => {
-    fetchPagePosts();
+    setCurrentPage(0);
+    fetchPagePosts(0);
   };
 
-  // Add click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
@@ -114,7 +214,6 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Add handlers for settings actions
   const handleUpdatePage = () => {
     setIsUpdatePageOpen(true);
   };
@@ -125,7 +224,6 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   };
 
   const handleAddMember = () => {
-    // Navigate to members page
     window.location.href = `/pages/${pageId}/members`;
   };
 
@@ -148,14 +246,49 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   };
 
   const handleDeletePage = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa trang này?')) {
+    const confirmed = await new Promise((resolve) => {
+      toast.info(
+        <div className="flex flex-col items-center">
+          <p className="font-semibold mb-2">Xác nhận xóa trang</p>
+          <p className="text-sm text-gray-600">Bạn có chắc chắn muốn xóa trang này?</p>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => {
+                toast.dismiss();
+                resolve(true);
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Xóa
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss();
+                resolve(false);
+              }}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>,
+        {
+          position: "top-center",
+          autoClose: false,
+          closeOnClick: false,
+          draggable: false,
+        }
+      );
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       const response = await get(`/v1/page/${pageId}/delete`);
       if (response.result) {
-        toast.success('Đã xóa trang');
+        toast.success('Đã xóa trang thành công');
         window.location.href = '/pages';
       } else {
         toast.error('Có lỗi xảy ra khi xóa trang');
@@ -303,14 +436,14 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
             Giới thiệu
           </button>
           <button
-            onClick={() => setActiveTab('events')}
+            onClick={() => setActiveTab('followers')}
             className={`px-4 py-2 ${
-              activeTab === 'events'
+              activeTab === 'followers'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Sự kiện
+            Người theo dõi
           </button>
           <button
             onClick={() => setActiveTab('members')}
@@ -338,9 +471,33 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
         <div className="mt-6">
           {activeTab === 'posts' && (
             <div className="space-y-4">
-              {posts.map((post) => (
-                <PagePostCard key={post._id} post={post} />
-              ))}
+              {posts.length === 0 && !isLoadingMore ? (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-xl font-bold mb-4">Bài đăng</h2>
+                  <p className="text-gray-600">Chưa có bài đăng nào.</p>
+                </div>
+              ) : (
+                <>
+                  {posts.map((post, index) => (
+                    <div 
+                      key={post._id} 
+                      ref={index === posts.length - 1 ? lastPostElementRef : undefined}
+                    >
+                      <PagePostCard post={post} />
+                    </div>
+                  ))}
+                  {isLoadingMore && (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    </div>
+                  )}
+                  {currentPage >= totalPages - 1 && posts.length > 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      Đã hiển thị tất cả bài đăng ({totalPages} trang)
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
           {activeTab === 'about' && (
@@ -361,6 +518,48 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
               </div>
             </div>
           )}
+          {activeTab === 'followers' && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-bold mb-4">Danh sách người theo dõi</h2>
+                <div className="space-y-4">
+                  {followers.map((follower, index) => (
+                    <div 
+                      key={follower._id} 
+                      ref={index === followers.length - 1 ? lastFollowerRef : undefined}
+                      className="flex items-center space-x-4 p-4 border-b last:border-b-0"
+                    >
+                      <img
+                        src={follower.user?.avatarUrl || '/default-avatar.png'}
+                        alt={follower.user?.displayName}
+                        className="w-12 h-12 rounded-full"
+                      />
+                      <div>
+                        <h3 className="font-medium">{follower.user?.displayName}</h3>
+                        <p className="text-sm text-gray-500">Đã theo dõi từ {new Date(follower.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoadingFollowers && (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    </div>
+                  )}
+                  {currentFollowersPage >= totalFollowersPages - 1 && followers.length > 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      Đã hiển thị tất cả người theo dõi ({totalFollowersPages} trang)
+                    </div>
+                  )}
+                  {followers.length === 0 && !isLoadingFollowers && (
+                    <div className="text-center py-4 text-gray-500">
+                      Chưa có người theo dõi nào.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab === 'members' && <PageMembers pageId={pageId} />}
           {activeTab === 'photos' && <PagePhotos pageId={pageId} />}
         </div>
       </div>

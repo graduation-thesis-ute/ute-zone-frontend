@@ -2,14 +2,23 @@ export interface Page {
   _id: string;
   name: string;
   description: string;
-  avatarUrl: string;
-  coverUrl: string;
+  avatarUrl?: string;
+  coverUrl?: string;
   category: string;
-  createdAt: string;
-  totalFollowers: number;
-  isOwner: number;
   isPublished: boolean;
+  isOwner: number;
+  totalFollowers: number;
+  createdAt: string;
   updatedAt: string;
+  followers?: Array<{
+    _id: string;
+    user: {
+      _id: string;
+      displayName: string;
+      avatarUrl?: string;
+    };
+    createdAt: string;
+  }>;
 }
 
 export interface PageResponse {

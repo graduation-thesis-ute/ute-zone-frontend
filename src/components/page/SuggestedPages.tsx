@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Bookmark, TrendingUp, Loader2 } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
@@ -15,56 +15,107 @@ interface SuggestedPage {
 const SuggestedPages: React.FC = () => {
   const [suggestedPages, setSuggestedPages] = useState<SuggestedPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const { profile } = useProfile();
   const { get, post } = useFetch();
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastPageRef = useRef<HTMLDivElement>(null);
 
-  const fetchSuggestedPages = async () => {
+  const fetchSuggestedPages = useCallback(async (pageNum: number) => {
     try {
-      setIsLoading(true);
+      if (pageNum === 0) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      if (!profile?._id) {
+        throw new Error('User ID not found');
+      }
+
       // Fetch suggested pages
       const suggestedResponse = await get('/v1/page-follower/suggested', {
-        page: '0',
+        isPaged: '1',
+        page: pageNum.toString(),
         size: '10'
       });
 
       // Fetch pages where user is a member using the new API endpoint
       const memberResponse = await get('/v1/page-member/list', {
         user: profile?._id,
-        page: '0',
-        size: '100'
+        isPaged: '0',
       });
 
       const memberPageIds = memberResponse.data.content.map((member: any) => member.page._id);
       
-      // Filter out pages where user is already a member
-      const filteredPages = suggestedResponse.data.content.filter(
-        (page: SuggestedPage) => !memberPageIds.includes(page._id)
-      );
+      // Filter out pages where user is already a member and remove duplicates
+      const filteredPages = suggestedResponse.data.content
+        .filter((page: SuggestedPage) => !memberPageIds.includes(page._id))
+        .filter((page: SuggestedPage, index: number, self: SuggestedPage[]) => 
+          index === self.findIndex((p) => p._id === page._id)
+        );
 
-      setSuggestedPages(filteredPages);
+      if (pageNum === 0) {
+        setSuggestedPages(filteredPages);
+      } else {
+        // When adding more pages, ensure no duplicates
+        setSuggestedPages(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          const newPages = filteredPages.filter((page: SuggestedPage) => !existingIds.has(page._id));
+          return [...prev, ...newPages];
+        });
+      }
+
+      setTotalPages(suggestedResponse.data.totalPages);
+      setCurrentPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch suggested pages');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [get, profile?._id]);
+
+  useEffect(() => {
+    if (profile?._id) {
+      fetchSuggestedPages(0);
+    }
+  }, [profile?._id, fetchSuggestedPages]);
+
+  // Setup Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && currentPage < totalPages - 1 && !isLoadingMore) {
+          fetchSuggestedPages(currentPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (lastPageRef.current) {
+      observer.current.observe(lastPageRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [currentPage, totalPages, isLoadingMore, fetchSuggestedPages]);
 
   const handleFollow = async (pageId: string) => {
     try {
       await post('/v1/page-follower/follow', { pageId });
       // Refresh suggested pages after following
-      fetchSuggestedPages();
+      fetchSuggestedPages(0);
     } catch (err) {
       console.error('Failed to follow page:', err);
     }
   };
-
-  useEffect(() => {
-    if (profile?._id) {
-      fetchSuggestedPages();
-    }
-  }, [profile?._id]);
 
   if (isLoading) {
     return (
@@ -103,9 +154,13 @@ const SuggestedPages: React.FC = () => {
       </div>
 
       {/* Suggested Pages List */}
-      <div className="space-y-4">
-        {suggestedPages.map((page) => (
-          <div key={page._id} className="bg-white rounded-lg p-4 shadow-sm">
+      <div className="space-y-4 h-[calc(100vh-300px)] overflow-y-auto">
+        {suggestedPages.map((page, index) => (
+          <div 
+            key={page._id} 
+            ref={index === suggestedPages.length - 1 ? lastPageRef : undefined}
+            className="bg-white rounded-lg p-4 shadow-sm"
+          >
             <div className="flex items-start space-x-3">
               {/* Avatar */}
               <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
@@ -159,6 +214,20 @@ const SuggestedPages: React.FC = () => {
             </div>
           </div>
         ))}
+
+        {/* Loading More Indicator */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          </div>
+        )}
+
+        {/* No More Pages Indicator */}
+        {currentPage >= totalPages - 1 && suggestedPages.length > 0 && (
+          <div className="text-center py-4 text-gray-500">
+            Đã hiển thị tất cả trang gợi ý      
+          </div>
+        )}
       </div>
 
       {/* Empty State */}

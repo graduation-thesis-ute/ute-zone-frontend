@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Search, Filter } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
@@ -22,15 +22,25 @@ const CommunityPageFeed: React.FC = () => {
   const [posts, setPosts] = useState<PagePost[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<PagePost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const { profile } = useProfile();
   const { get } = useFetch();
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastPostRef = useRef<HTMLDivElement>(null);
 
-  const fetchCommunityPosts = async () => {
+  const fetchCommunityPosts = useCallback(async (pageNum: number) => {
     try {
-      setIsLoading(true);
+      if (pageNum === 0) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
       if (!profile?._id) {
         throw new Error('User ID not found');
       }
@@ -38,13 +48,14 @@ const CommunityPageFeed: React.FC = () => {
       // Fetch community pages (kind = 1)
       const pagesResponse = await get('/v1/page/list', {
         kind: '1',
-        page: '0',
-        size: '100'
+        isPaged: '0',
       });
-      console.log("pagesResponse", pagesResponse);
+
       if (!pagesResponse.data || !pagesResponse.data.content) {
-        setPosts([]);
-        setFilteredPosts([]);
+        if (pageNum === 0) {
+          setPosts([]);
+          setFilteredPosts([]);
+        }
         return;
       }
 
@@ -52,10 +63,11 @@ const CommunityPageFeed: React.FC = () => {
       const postsPromises = pagesResponse.data.content.map(async (page: any) => {
         const postsResponse = await get('/v1/page-post/list', {
           pageId: page._id,
-          pageNumber: '0',
-          pageSize: '10'
+          isPaged: '1',
+          page: '0',
+          size: '10'
         });
-        console.log("postsResponse", postsResponse);
+
         if (postsResponse.data && postsResponse.data.content) {
           return postsResponse.data.content.map((post: any) => ({
             ...post,
@@ -75,26 +87,56 @@ const CommunityPageFeed: React.FC = () => {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      setPosts(flattenedPosts);
-      setFilteredPosts(flattenedPosts);
+      if (pageNum === 0) {
+        setPosts(flattenedPosts);
+        setFilteredPosts(flattenedPosts);
+      } else {
+        setPosts(prev => [...prev, ...flattenedPosts]);
+        setFilteredPosts(prev => [...prev, ...flattenedPosts]);
+      }
+
+      setTotalPages(pagesResponse.data.totalPages);
+      setCurrentPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch community posts');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [get, profile?._id]);
 
   useEffect(() => {
     if (profile?._id) {
-      fetchCommunityPosts();
+      fetchCommunityPosts(0);
     }
-  }, [profile?._id]);
+  }, [profile?._id, fetchCommunityPosts]);
+
+  // Setup Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && currentPage < totalPages - 1 && !isLoadingMore) {
+          fetchCommunityPosts(currentPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (lastPostRef.current) {
+      observer.current.observe(lastPostRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [currentPage, totalPages, isLoadingMore, fetchCommunityPosts]);
 
   // Search and Filter Logic
   useEffect(() => {
     let result = posts;
 
-    // Filter by search term
     if (searchTerm) {
       result = result.filter(post => 
         post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -102,7 +144,6 @@ const CommunityPageFeed: React.FC = () => {
       );
     }
 
-    // Filter by category
     if (filterCategory) {
       result = result.filter(post => post.page.category === filterCategory);
     }
@@ -128,7 +169,7 @@ const CommunityPageFeed: React.FC = () => {
           <h2 className="text-2xl font-bold text-red-600 mb-4">Lỗi</h2>
           <p className="text-gray-700 mb-6">{error}</p>
           <button
-            onClick={fetchCommunityPosts}
+            onClick={() => fetchCommunityPosts(0)}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
             Thử lại
@@ -223,10 +264,14 @@ const CommunityPageFeed: React.FC = () => {
           </div>
         )}
 
-        {/* Posts List */}
-        <div className="space-y-4">
-          {filteredPosts.map((post) => (
-            <div key={post._id} className="bg-white rounded-lg p-4 shadow-sm">
+        {/* Posts List with fixed height and overflow */}
+        <div className="space-y-4 h-[calc(100vh-300px)] overflow-y-auto">
+          {filteredPosts.map((post, index) => (
+            <div 
+              key={post._id} 
+              ref={index === filteredPosts.length - 1 ? lastPostRef : undefined}
+              className="bg-white rounded-lg p-4 shadow-sm"
+            >
               {/* Page Info */}
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
@@ -277,6 +322,20 @@ const CommunityPageFeed: React.FC = () => {
               </div>
             </div>
           ))}
+          
+          {/* Loading More Indicator */}
+          {isLoadingMore && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            </div>
+          )}
+          
+          {/* No More Posts Indicator */}
+          {currentPage >= totalPages - 1 && filteredPosts.length > 0 && (
+            <div className="text-center py-4 text-gray-500">
+              Đã hiển thị tất cả bài đăng ({totalPages} trang)
+            </div>
+          )}
         </div>
       </div>
     </div>
