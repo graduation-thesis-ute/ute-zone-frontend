@@ -265,75 +265,118 @@ const CommunityPageFeed: React.FC = () => {
         )}
 
         {/* Posts List with fixed height and overflow */}
-        <div className="space-y-4 h-[calc(100vh-300px)] overflow-y-auto">
+        <div className="space-y-6 h-[calc(100vh-300px)] overflow-y-auto">
           {filteredPosts.map((post, index) => (
             <div 
               key={post._id} 
               ref={index === filteredPosts.length - 1 ? lastPostRef : undefined}
-              className="bg-white rounded-lg p-4 shadow-sm"
+              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              {/* Page Info */}
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                  {post.page.avatarUrl ? (
-                    <img
-                      src={post.page.avatarUrl}
-                      alt={`${post.page.name} avatar`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-gray-500 text-sm">
-                        {post.page.name.charAt(0).toUpperCase()}
+              {/* Page Info Header */}
+              <div className="p-4 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm">
+                    {post.page.avatarUrl ? (
+                      <img
+                        src={post.page.avatarUrl}
+                        alt={`${post.page.name} avatar`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
+                        <span className="text-xl font-semibold text-indigo-600">
+                          {post.page.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-gray-900 truncate">{post.page.name}</h3>
+                      <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                        {post.page.category}
                       </span>
                     </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-medium">{post.page.name}</h3>
-                  <span className="text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded">
-                    {post.page.category}
-                  </span>
+                    <p className="text-xs text-gray-500">
+                      {new Date(post.createdAt).toLocaleDateString('vi-VN', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Post Content */}
-              <div className="mb-4">
-                <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
+              <div className="p-4">
+                <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{post.content}</p>
                 {post.images && post.images.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className={`mt-4 grid gap-2 ${
+                    post.images.length === 1 ? 'grid-cols-1' : 
+                    post.images.length === 2 ? 'grid-cols-2' : 
+                    'grid-cols-3'
+                  }`}>
                     {post.images.map((image, index) => (
-                      <img
+                      <div 
                         key={index}
-                        src={image}
-                        alt={`Post image ${index + 1}`}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
+                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
+                      >
+                        <img
+                          src={image}
+                          alt={`Post image ${index + 1}`}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Post Stats */}
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
-                <span>{post.totalLikes} lượt thích</span>
-                <span>{post.totalComments} bình luận</span>
+              {/* Post Actions */}
+              <div className="px-4 py-3 border-t border-gray-100">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-4">
+                    <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      <span>{post.totalLikes}</span>
+                    </button>
+                    <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span>{post.totalComments}</span>
+                    </button>
+                  </div>
+                  <button className="text-gray-500 hover:text-blue-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
           
           {/* Loading More Indicator */}
           {isLoadingMore && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            <div className="flex justify-center py-6">
+              <div className="flex items-center space-x-2 text-indigo-600">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span>Đang tải thêm...</span>
+              </div>
             </div>
           )}
           
           {/* No More Posts Indicator */}
           {currentPage >= totalPages - 1 && filteredPosts.length > 0 && (
-            <div className="text-center py-4 text-gray-500">
-              Đã hiển thị tất cả bài đăng ({totalPages} trang)
+            <div className="text-center py-6 text-gray-500">
+              <p className="text-sm">Đã hiển thị tất cả bài đăng</p>
+              <p className="text-xs mt-1">({totalPages} trang)</p>
             </div>
           )}
         </div>
