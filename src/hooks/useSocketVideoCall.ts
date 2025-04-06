@@ -38,65 +38,84 @@ export const useSocketVideoCall = ({
   onCallEnded,
 }: UseSocketVideoCallProps) => {
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.warn("Socket is null in useSocketVideoCall");
+      return;
+    }
 
-    socket.on(
-      "INCOMING_VIDEO_CALL",
-      (data: { callerId: string; conversationId: string }) => {
-        console.log("FE received INCOMING_VIDEO_CALL:", data);
-        if (onIncomingVideoCall) onIncomingVideoCall(data);
-      }
+    console.log(
+      "Socket connection status:",
+      socket.connected ? "connected" : "disconnected"
     );
 
-    socket.on(
-      "VIDEO_CALL_ACCEPTED",
-      (data: { receiverId: string; conversationId: string }) => {
-        console.log("FE received VIDEO_CALL_ACCEPTED:", data);
-        if (onVideoCallAccepted) onVideoCallAccepted(data);
-      }
-    );
+    // Handle socket connection events
+    socket.on("connect", () => {
+      console.log("Socket connected in useSocketVideoCall");
+    });
 
-    socket.on(
-      "VIDEO_CALL_REJECTED",
-      (data: { receiverId: string; conversationId: string }) => {
-        console.log("FE received VIDEO_CALL_REJECTED:", data);
-        if (onVideoCallRejected) onVideoCallRejected(data);
-      }
-    );
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
 
-    socket.on("OFFER", (data: any) => {
+    socket.on("disconnect", (reason) => {
+      console.warn("Socket disconnected:", reason);
+    });
+
+    // Handle incoming video call
+    socket.on("INCOMING_VIDEO_CALL", (data) => {
+      console.log("FE received INCOMING_VIDEO_CALL:", data);
+      if (onIncomingVideoCall) onIncomingVideoCall(data);
+    });
+
+    // Handle video call accepted
+    socket.on("VIDEO_CALL_ACCEPTED", (data) => {
+      console.log("FE received VIDEO_CALL_ACCEPTED:", data);
+      if (onVideoCallAccepted) onVideoCallAccepted(data);
+    });
+
+    // Handle video call rejected
+    socket.on("VIDEO_CALL_REJECTED", (data) => {
+      console.log("FE received VIDEO_CALL_REJECTED:", data);
+      if (onVideoCallRejected) onVideoCallRejected(data);
+    });
+
+    // Handle video call ended
+    socket.on("VIDEO_CALL_ENDED", (data) => {
+      console.log("FE received VIDEO_CALL_ENDED:", data);
+      if (onVideoCallEnded) onVideoCallEnded(data);
+    });
+
+    // Handle offer
+    socket.on("OFFER", (data) => {
       console.log("FE received OFFER:", data);
       if (onOffer) onOffer(data);
     });
 
-    socket.on("ANSWER", (data: any) => {
+    // Handle answer
+    socket.on("ANSWER", (data) => {
       console.log("FE received ANSWER:", data);
       if (onAnswer) onAnswer(data);
     });
 
-    socket.on("ICE_CANDIDATE", (data: any) => {
+    // Handle ICE candidate
+    socket.on("ICE_CANDIDATE", (data) => {
       console.log("FE received ICE_CANDIDATE:", data);
       if (onIceCandidate) onIceCandidate(data);
     });
 
-    socket.on(
-      "VIDEO_CALL_ENDED",
-      (data: { callerId?: string; receiverId?: string }) => {
-        console.log("FE received VIDEO_CALL_ENDED:", data);
-        if (onVideoCallEnded) onVideoCallEnded(data);
-      }
-    );
-
-    socket.on(
-      "CALL_ENDED",
-      (data: { message: string; senderId: string; receiverId: string }) => {
-        console.log("FE received CALL_ENDED:", data);
-        if (onCallEnded) onCallEnded(data);
-      }
-    );
-
+    // Clean up event listeners
     return () => {
-      // Không cần disconnect ở đây vì socket được quản lý bởi useSocketChat
+      console.log("Cleaning up socket event listeners");
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
+      socket.off("INCOMING_VIDEO_CALL");
+      socket.off("VIDEO_CALL_ACCEPTED");
+      socket.off("VIDEO_CALL_REJECTED");
+      socket.off("VIDEO_CALL_ENDED");
+      socket.off("OFFER");
+      socket.off("ANSWER");
+      socket.off("ICE_CANDIDATE");
     };
   }, [
     socket,
@@ -107,7 +126,6 @@ export const useSocketVideoCall = ({
     onAnswer,
     onIceCandidate,
     onVideoCallEnded,
-    onCallEnded,
   ]);
 
   return socket; // Trả về socket để sử dụng nếu cần

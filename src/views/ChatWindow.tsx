@@ -118,6 +118,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   useEffect(() => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.onloadedmetadata = () => {
+        console.log("Remote video metadata loaded");
+      };
+      remoteVideoRef.current.onplay = () => {
+        console.log("Remote video started playing");
+      };
+      remoteVideoRef.current.onerror = (error) => {
+        console.error("Remote video error:", error);
+      };
+    }
+  }, [remoteVideoRef]);
+
+  useEffect(() => {
     const fetchMembersList = async () => {
       setLoadingMembers(true);
       try {
@@ -314,105 +328,297 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [get]
   );
 
-  const startVideoCall = async (receiverId: string) => {
-    peerConnectionRef.current = new RTCPeerConnection(configuration);
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    localStreamRef.current = stream; // Lưu stream
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    stream
-      .getTracks()
-      .forEach((track) => peerConnectionRef.current?.addTrack(track, stream));
-
-    peerConnectionRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketVideo?.emit("ICE_CANDIDATE", {
-          to: receiverId,
-          candidate: event.candidate,
-        });
+  const startVideoCall = async (userId: string) => {
+    try {
+      // Đóng peerConnection cũ nếu tồn tại
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        console.log("Closed existing peerConnection (caller)");
       }
-    };
 
-    peerConnectionRef.current.ontrack = (event) => {
-      if (remoteVideoRef.current)
-        remoteVideoRef.current.srcObject = event.streams[0];
-    };
+      peerConnectionRef.current = new RTCPeerConnection(configuration);
+      console.log("New peerConnection created (caller)");
 
-    const offer = await peerConnectionRef.current.createOffer();
-    await peerConnectionRef.current.setLocalDescription(offer);
-    socketVideo?.emit("OFFER", { to: receiverId, offer });
+      peerConnectionRef.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("ICE candidate sent (caller):", event.candidate);
+          socketVideo?.emit("ICE_CANDIDATE", {
+            to: userId,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      peerConnectionRef.current.ontrack = (event) => {
+        const stream = event.streams[0];
+        console.log("Caller received remote track:", stream);
+        console.log("Number of tracks (caller):", stream.getTracks().length);
+        console.log("Video tracks (caller):", stream.getVideoTracks());
+        console.log("Audio tracks (caller):", stream.getAudioTracks());
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream;
+          console.log(
+            "Assigned stream to remoteVideoRef (caller):",
+            remoteVideoRef.current.srcObject
+          );
+          remoteVideoRef.current.play().catch((error) => {
+            console.error("Error playing remote video (caller):", error);
+          });
+        } else {
+          console.error("remoteVideoRef.current is null (caller)");
+        }
+      };
+
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.iceConnectionState;
+        console.log("ICE connection state (caller):", state);
+        if (state === "connected" || state === "completed") {
+          console.log("ICE connection established (caller)");
+        } else if (state === "disconnected" || state === "failed") {
+          toast.error("Kết nối video bị ngắt (caller).");
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      console.log("Local stream acquired (caller):", stream);
+      console.log("Local tracks (caller):", stream.getTracks());
+      console.log("Local video tracks (caller):", stream.getVideoTracks());
+      console.log("Local audio tracks (caller):", stream.getAudioTracks());
+
+      localStreamRef.current = stream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log("Assigned stream to localVideoRef (caller)");
+      }
+
+      stream.getTracks().forEach((track) => {
+        console.log("Adding track to peerConnection (caller):", track);
+        peerConnectionRef.current?.addTrack(track, stream);
+      });
+
+      const offer = await peerConnectionRef.current.createOffer();
+      console.log("Offer SDP (caller):", offer.sdp);
+      await peerConnectionRef.current.setLocalDescription(offer);
+      console.log("Local description set (caller)");
+      socketVideo?.emit("OFFER", { to: userId, offer });
+
+      console.log("Offer sent successfully (caller)");
+      setIsVideoCallActive(true);
+      setIsCalling(true);
+    } catch (error) {
+      console.error("Error starting video call:", error);
+      toast.error("Không thể bắt đầu cuộc gọi video.");
+      setIsVideoCallActive(false);
+    }
   };
+
+  // Queue for ICE candidates that arrive before the remote description is set
+  const pendingIceCandidates = useRef<RTCIceCandidateInit[]>([]);
 
   const handleOffer = async (data: {
     to: string;
     offer: RTCSessionDescriptionInit;
   }) => {
-    peerConnectionRef.current = new RTCPeerConnection(configuration);
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    localStreamRef.current = stream; // Lưu stream
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    stream
-      .getTracks()
-      .forEach((track) => peerConnectionRef.current?.addTrack(track, stream));
-
-    peerConnectionRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketVideo?.emit("ICE_CANDIDATE", {
-          to: data.to,
-          candidate: event.candidate,
-        });
+    try {
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        console.log("Closed existing peerConnection (callee)");
       }
-    };
 
-    peerConnectionRef.current.ontrack = (event) => {
-      if (remoteVideoRef.current)
-        remoteVideoRef.current.srcObject = event.streams[0];
-    };
+      peerConnectionRef.current = new RTCPeerConnection(configuration);
+      console.log("New peerConnection created (callee)");
 
-    await peerConnectionRef.current.setRemoteDescription(
-      new RTCSessionDescription(data.offer)
-    );
-    const answer = await peerConnectionRef.current.createAnswer();
-    await peerConnectionRef.current.setLocalDescription(answer);
-    socketVideo?.emit("ANSWER", { to: data.to, answer });
+      peerConnectionRef.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("ICE candidate sent (callee):", event.candidate);
+          socketVideo?.emit("ICE_CANDIDATE", {
+            to: data.to,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      peerConnectionRef.current.ontrack = (event) => {
+        const stream = event.streams[0];
+        console.log("Callee received remote track:", stream);
+        console.log("Number of tracks (callee):", stream.getTracks().length);
+        console.log("Video tracks (callee):", stream.getVideoTracks());
+        console.log("Audio tracks (callee):", stream.getAudioTracks());
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream;
+          console.log(
+            "Assigned stream to remoteVideoRef (callee):",
+            remoteVideoRef.current.srcObject
+          );
+          remoteVideoRef.current.play().catch((error) => {
+            console.error("Error playing remote video (callee):", error);
+            setTimeout(() => {
+              remoteVideoRef.current
+                ?.play()
+                .catch((e) => console.error("Retry play failed:", e));
+            }, 500);
+          });
+        } else {
+          console.error("remoteVideoRef.current is null (callee)");
+        }
+      };
+
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.iceConnectionState;
+        console.log("ICE connection state (callee):", state);
+        if (state === "connected" || state === "completed") {
+          console.log("ICE connection established (callee)");
+        } else if (state === "disconnected" || state === "failed") {
+          toast.error("Kết nối video bị ngắt (callee).");
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      console.log("Local stream acquired (callee):", stream);
+      console.log("Local tracks (callee):", stream.getTracks());
+      console.log("Local video tracks (callee):", stream.getVideoTracks());
+      console.log("Local audio tracks (callee):", stream.getAudioTracks());
+
+      localStreamRef.current = stream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log("Assigned stream to localVideoRef (callee)");
+      }
+
+      stream.getTracks().forEach((track) => {
+        console.log("Adding track to peerConnection (callee):", track);
+        peerConnectionRef.current?.addTrack(track, stream);
+      });
+
+      console.log("Received Offer SDP (callee):", data.offer.sdp);
+      await peerConnectionRef.current.setRemoteDescription(
+        new RTCSessionDescription(data.offer)
+      );
+      console.log("Remote description set (callee)");
+
+      await processQueuedIceCandidates();
+
+      const answer = await peerConnectionRef.current.createAnswer();
+      console.log("Answer SDP (callee):", answer.sdp);
+      await peerConnectionRef.current.setLocalDescription(answer);
+      console.log("Local description set (callee)");
+      socketVideo?.emit("ANSWER", { to: data.to, answer });
+
+      console.log("Answer sent successfully (callee)");
+      setIsVideoCallActive(true);
+    } catch (error) {
+      console.error("Error handling offer:", error);
+      toast.error("Không thể thiết lập kết nối video.");
+      setIsVideoCallActive(false);
+    }
+  };
+
+  // Add a function to process queued ICE candidates
+  const processQueuedIceCandidates = async () => {
+    if (peerConnectionRef.current && pendingIceCandidates.current.length > 0) {
+      console.log(
+        `Processing ${pendingIceCandidates.current.length} queued ICE candidates`
+      );
+      for (const candidate of pendingIceCandidates.current) {
+        try {
+          console.log("Processing queued candidate:", candidate);
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+          console.log("Queued ICE candidate added successfully");
+        } catch (error) {
+          console.error("Error adding queued ICE candidate:", error);
+        }
+      }
+      pendingIceCandidates.current = [];
+      console.log("Cleared ICE candidate queue");
+    }
   };
 
   const handleAnswer = async (data: {
     to: string;
     answer: RTCSessionDescriptionInit;
   }) => {
-    await peerConnectionRef.current?.setRemoteDescription(
-      new RTCSessionDescription(data.answer)
-    );
+    try {
+      if (peerConnectionRef.current) {
+        if (peerConnectionRef.current.signalingState === "have-local-offer") {
+          console.log("Received Answer SDP (caller):", data.answer.sdp);
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(data.answer)
+          );
+          console.log("Remote description set successfully (caller)");
+          await processQueuedIceCandidates();
+        } else {
+          console.warn(
+            "Cannot set remote description in current state (caller):",
+            peerConnectionRef.current.signalingState
+          );
+        }
+      } else {
+        console.error(
+          "No peer connection available when setting remote description (caller)"
+        );
+      }
+    } catch (error) {
+      console.error("Error setting remote description (caller):", error);
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+    }
   };
 
   const handleIceCandidate = async (data: {
     to: string;
     candidate: RTCIceCandidateInit;
   }) => {
-    await peerConnectionRef.current?.addIceCandidate(
-      new RTCIceCandidate(data.candidate)
-    );
+    try {
+      if (peerConnectionRef.current) {
+        console.log("Received ICE candidate:", data.candidate);
+        if (peerConnectionRef.current.remoteDescription) {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+          console.log("ICE candidate added successfully");
+        } else {
+          console.log("Queuing ICE candidate for later:", data.candidate);
+          pendingIceCandidates.current.push(data.candidate);
+        }
+      } else {
+        console.error("No peer connection available when adding ICE candidate");
+      }
+    } catch (error) {
+      console.error("Error adding ICE candidate:", error);
+    }
   };
 
   const endVideoCall = () => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      console.log("PeerConnection closed");
       peerConnectionRef.current = null;
     }
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop()); // Tắt hoàn toàn mic/camera
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped track:", track);
+      });
       localStreamRef.current = null;
     }
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+      console.log("Cleared localVideoRef");
+    }
     setIsVideoCallActive(false);
     setIsCalling(false);
     setIncomingCall(null);
+    console.log("Video call ended");
   };
 
   const handleCallEndedMessage = async (data: {
@@ -864,6 +1070,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             membersList.find((m) => m.user._id !== userCurrent?._id)?.user
               ._id || ""
           }
+          localStream={localStreamRef.current}
         />
       )}
 

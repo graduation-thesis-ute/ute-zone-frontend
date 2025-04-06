@@ -22,6 +22,7 @@ interface VideoCallModalProps {
   receiverAvatar?: string;
   callerName?: string;
   callerAvatar?: string;
+  localStream?: MediaStream | null;
 }
 
 const VideoCallModal: React.FC<VideoCallModalProps> = ({
@@ -34,6 +35,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   receiverAvatar,
   callerName,
   callerAvatar,
+  localStream,
 }) => {
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -45,6 +47,16 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   const [areControlsVisible, setAreControlsVisible] = useState(true);
   const localStreamRef = useRef<MediaStream | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize localStreamRef when localStream prop changes
+  useEffect(() => {
+    if (localStream) {
+      localStreamRef.current = localStream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream;
+      }
+    }
+  }, [localStream, localVideoRef]);
 
   // Format time for display
   const formatTime = (seconds: number) => {
@@ -136,12 +148,6 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }
   };
 
-  // Save stream when initializing
-  const setStream = (stream: MediaStream) => {
-    localStreamRef.current = stream;
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-  };
-
   // Get display names
   const displayReceiverName = receiverName || receiverId;
   const displayCallerName = callerName || callerId || "You";
@@ -174,6 +180,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
         <video
           ref={remoteVideoRef}
           autoPlay
+          playsInline
           className="w-full h-full object-cover rounded-t-xl"
         />
 
@@ -203,6 +210,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
             ref={localVideoRef}
             autoPlay
             muted
+            playsInline
             className="w-full h-full object-cover rounded-lg"
           />
 
