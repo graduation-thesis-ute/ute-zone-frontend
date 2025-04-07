@@ -19,6 +19,19 @@ const CallingPopup: React.FC<CallingPopupProps> = ({
 
   // Animated dots for "Calling..." text
   const [dots, setDots] = useState("");
+  // State for animation effects
+  const [isRinging, setIsRinging] = useState(true);
+  const [ringCount, setRingCount] = useState(0);
+
+  // Ringing animation effect
+  useEffect(() => {
+    const ringInterval = setInterval(() => {
+      setIsRinging((prev) => !prev);
+      setRingCount((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(ringInterval);
+  }, []);
 
   useEffect(() => {
     // Timer for call duration
@@ -66,7 +79,7 @@ const CallingPopup: React.FC<CallingPopupProps> = ({
 
         {/* Call status */}
         <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-          Calling{dots}
+          Đang gọi{dots}
         </h3>
         <p className="text-sm text-gray-600 mt-1">{displayName}</p>
 
@@ -87,12 +100,25 @@ const CallingPopup: React.FC<CallingPopupProps> = ({
         </div>
       </div>
 
-      {/* Connection status */}
+      {/* Custom ripple animation for ringing effect */}
       <div className="mt-4 pt-2 border-t border-gray-100 flex justify-center">
-        <p className="text-xs text-gray-500 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-          Secure connection
-        </p>
+        <div className="flex items-center">
+          <span
+            className={`h-2 w-2 rounded-full bg-green-500 mr-1 ${
+              ringCount % 2 === 0 ? "opacity-100" : "opacity-50"
+            }`}
+          ></span>
+          <span
+            className={`h-2 w-2 rounded-full bg-green-500 mr-1 ${
+              ringCount % 2 === 1 ? "opacity-100" : "opacity-50"
+            }`}
+          ></span>
+          <span
+            className={`h-2 w-2 rounded-full bg-green-500 ${
+              ringCount % 3 === 0 ? "opacity-100" : "opacity-50"
+            }`}
+          ></span>
+        </div>
       </div>
     </div>
   );

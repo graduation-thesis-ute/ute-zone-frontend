@@ -16,7 +16,7 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
   onAcceptCall,
   onRejectCall,
 }) => {
-  const displayName = callerName || callerId;
+  const displayName = callerName;
 
   // State for animation effects
   const [isRinging, setIsRinging] = useState(true);
@@ -31,6 +31,8 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
 
     return () => clearInterval(ringInterval);
   }, []);
+
+  console.log("IncomingCallPopup", callerName, callerAvatar, callerId);
 
   return (
     <div
@@ -72,7 +74,7 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
           <p className="text-sm text-gray-600 mt-1 font-medium">
             {displayName}
           </p>
-          <p className="text-xs text-gray-500 mt-1">{callerId}</p>
+          {/* <p className="text-xs text-gray-500 mt-1">{callerId}</p> */}
         </div>
 
         {/* Call controls */}
