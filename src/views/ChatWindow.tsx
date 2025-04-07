@@ -689,6 +689,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         conversationId: conversation._id,
         callerId: userCurrent?._id,
         receiverId,
+        message: "Cuộc gọi đã bị hủy",
       });
     }
     setIsCalling(false);
