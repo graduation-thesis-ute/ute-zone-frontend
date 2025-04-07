@@ -73,7 +73,10 @@ export const useSocketChat = ({
     return () => {
       if (socketRef.current) {
         if (conversationId) socket.emit("LEAVE_CONVERSATION", conversationId);
-        if (userId) socket.emit("LEAVE_USER", userId);
+        if (userId) {
+          socket.emit("LEAVE_USER", userId);
+          socket.emit("LEAVE_NOTIFICATION", userId);
+        }
         socket.disconnect();
       }
     };
