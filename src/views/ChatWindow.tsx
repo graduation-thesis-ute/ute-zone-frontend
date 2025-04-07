@@ -98,6 +98,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isCalling, setIsCalling] = useState(false);
   const [incomingCall, setIncomingCall] = useState<{
     callerId: string;
+    callerName: string;
+    callerAvatar: string;
     conversationId: string;
   } | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -673,6 +675,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       socketVideo?.emit("START_VIDEO_CALL", {
         conversationId: conversation._id,
         callerId: userCurrent?._id,
+        callerName: userCurrent?.displayName,
+        callerAvatar: userCurrent?.avatarUrl,
         receiverId,
       });
       setIsCalling(true);
@@ -838,6 +842,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       // Auto-dismiss after 30 seconds if not answered or rejected
       timeoutId = setTimeout(() => {
         console.log("Auto-dismissing incoming call after timeout");
+        if (socketVideo && userCurrent) {
+          socketVideo.emit("END_VIDEO_CALL", {
+            conversationId: incomingCall.conversationId,
+            callerId: incomingCall.callerId,
+            receiverId: userCurrent._id,
+            message: "Cuộc gọi nhỡ",
+          });
+        }
         setIncomingCall(null);
         setIsCalling(false);
         setIsVideoCallActive(false);
@@ -849,7 +861,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         clearTimeout(timeoutId);
       }
     };
-  }, [incomingCall]);
+  }, [incomingCall, socketVideo, userCurrent]);
 
   const formatCallDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -1120,15 +1132,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
 
-        {incomingCall && !isVideoCallActive && (
+        {/* {incomingCall && !isVideoCallActive && (
           <div className="pointer-events-auto">
             <IncomingCallPopup
               callerId={incomingCall.callerId}
+              callerName={incomingCall.callerName}
+              callerAvatar={incomingCall.callerAvatar}
               onAcceptCall={handleAcceptCall}
               onRejectCall={handleRejectCall}
             />
           </div>
-        )}
+        )} */}
       </div>
 
       {isVideoCallActive && (

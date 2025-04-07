@@ -5,6 +5,8 @@ interface UseSocketVideoCallProps {
   socket: Socket | null; // Nhận socket từ ngoài thay vì tạo mới
   onIncomingVideoCall?: (data: {
     callerId: string;
+    callerName: string;
+    callerAvatar: string;
     conversationId: string;
   }) => void;
   onVideoCallAccepted?: (data: {

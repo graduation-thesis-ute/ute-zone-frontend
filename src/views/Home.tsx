@@ -41,6 +41,8 @@ const Home = () => {
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
   const [incomingCall, setIncomingCall] = useState<{
     callerId: string;
+    callerName: string;
+    callerAvatar: string;
     conversationId: string;
   } | null>(null);
   const [isVideoCallActive, setIsVideoCallActive] = useState(false);
@@ -195,7 +197,12 @@ const Home = () => {
 
   // Handle incoming video call
   const handleIncomingVideoCall = useCallback(
-    async (data: { callerId: string; conversationId: string }) => {
+    async (data: {
+      callerId: string;
+      callerName: string;
+      callerAvatar: string;
+      conversationId: string;
+    }) => {
       console.log("Incoming video call in Home:", data);
       setIncomingCall(data);
 
@@ -545,10 +552,17 @@ const Home = () => {
       // Auto-dismiss after 30 seconds if not answered or rejected
       timeoutId = setTimeout(() => {
         console.log("Auto-dismissing incoming call after timeout");
+        if (socketChat && userCurrent) {
+          socketChat.emit("END_VIDEO_CALL", {
+            conversationId: incomingCall.conversationId,
+            callerId: incomingCall.callerId,
+            receiverId: userCurrent._id,
+            message: "Cuộc gọi nhỡ",
+          });
+        }
         setIncomingCall(null);
-        setCallReceiverId(null);
-        setCallReceiverName(null);
-        setCallReceiverAvatar(null);
+        setIsCalling(false);
+        setIsVideoCallActive(false);
       }, 30000); // 30 seconds timeout
     }
 
@@ -557,7 +571,7 @@ const Home = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [incomingCall]);
+  }, [incomingCall, socketChat, userCurrent]);
 
   return (
     <div className="flex h-screen">
@@ -684,8 +698,8 @@ const Home = () => {
       {incomingCall && (
         <IncomingCallPopup
           callerId={incomingCall.callerId}
-          callerName={callReceiverName || undefined}
-          callerAvatar={callReceiverAvatar || undefined}
+          callerName={incomingCall.callerName}
+          callerAvatar={incomingCall.callerAvatar}
           onAcceptCall={handleAcceptCall}
           onRejectCall={handleRejectCall}
         />
