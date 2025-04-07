@@ -680,13 +680,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleRejectCall = () => {
+    console.log(
+      "Reject call button pressed, current incomingCall state:",
+      incomingCall
+    );
     if (incomingCall) {
-      socketVideo?.emit("REJECT_VIDEO_CALL", {
-        callerId: incomingCall.callerId,
-        receiverId: userCurrent?._id,
-        conversationId: conversation._id,
-      });
+      // Store the callerId before clearing the state
+      const callerId = incomingCall.callerId;
+      const conversationId = incomingCall.conversationId;
+
+      // Clear all call-related state immediately
       setIncomingCall(null);
+      setIsCalling(false);
+      setIsVideoCallActive(false);
+
+      // Then emit the rejection event
+      socketVideo?.emit("REJECT_VIDEO_CALL", {
+        callerId: callerId,
+        receiverId: userCurrent?._id,
+        conversationId: conversationId,
+      });
+      console.log("Call rejected, state cleared");
     }
   };
 
@@ -711,10 +725,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsVideoCallActive(true);
       startVideoCall(data.receiverId);
     },
-    onVideoCallRejected: () => {
+    onVideoCallRejected: (data) => {
+      console.log("Video call rejected, clearing state:", data);
+      // This handler is for when the other party rejects our call
+      // or when we reject their call and they receive the notification
       setIsCalling(false);
       setIncomingCall(null);
-      toast.info("Cuộc gọi bị từ chối");
+      setIsVideoCallActive(false);
+
+      // Only show the toast notification if the user is the caller
+      if (isCalling) {
+        toast.info("Cuộc gọi bị từ chối");
+      }
     },
     onOffer: handleOffer,
     onAnswer: handleAnswer,
@@ -775,6 +797,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     fetchMessages(0);
   }, [fetchMessages]);
+
+  // Auto-dismiss incoming call after timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (incomingCall) {
+      // Auto-dismiss after 30 seconds if not answered or rejected
+      timeoutId = setTimeout(() => {
+        console.log("Auto-dismissing incoming call after timeout");
+        setIncomingCall(null);
+        setIsCalling(false);
+        setIsVideoCallActive(false);
+      }, 30000); // 30 seconds timeout
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [incomingCall]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

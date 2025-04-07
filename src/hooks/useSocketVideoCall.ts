@@ -76,7 +76,10 @@ export const useSocketVideoCall = ({
     // Handle video call rejected
     socket.on("VIDEO_CALL_REJECTED", (data) => {
       console.log("FE received VIDEO_CALL_REJECTED:", data);
-      if (onVideoCallRejected) onVideoCallRejected(data);
+      if (onVideoCallRejected) {
+        // Clear all call-related state
+        onVideoCallRejected(data);
+      }
     });
 
     // Handle video call ended
@@ -103,6 +106,12 @@ export const useSocketVideoCall = ({
       if (onIceCandidate) onIceCandidate(data);
     });
 
+    // Handle call ended message
+    socket.on("CALL_ENDED", (data) => {
+      console.log("FE received CALL_ENDED:", data);
+      if (onCallEnded) onCallEnded(data);
+    });
+
     // Clean up event listeners
     return () => {
       console.log("Cleaning up socket event listeners");
@@ -116,6 +125,7 @@ export const useSocketVideoCall = ({
       socket.off("OFFER");
       socket.off("ANSWER");
       socket.off("ICE_CANDIDATE");
+      socket.off("CALL_ENDED");
     };
   }, [
     socket,
@@ -126,6 +136,7 @@ export const useSocketVideoCall = ({
     onAnswer,
     onIceCandidate,
     onVideoCallEnded,
+    onCallEnded,
   ]);
 
   return socket; // Trả về socket để sử dụng nếu cần
