@@ -25,6 +25,7 @@ import { useProfile } from "../types/UserContext";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import VideoCallModal from "../components/chat/VideoCallModal";
 import CallingPopup from "../components/chat/CallingPopup";
+import { encrypt } from "../types/utils";
 
 const Home = () => {
   const [selectedSection, setSelectedSection] = useState("messages");
@@ -53,6 +54,12 @@ const Home = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [callDuration, setCallDuration] = useState<number>(0);
+  const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -238,6 +245,14 @@ const Home = () => {
     setIsCalling(false);
     setIncomingCall(null);
     setCallReceiverId(null);
+    setCallStartTime(null);
+    setCallDuration(0);
+
+    // Clear call duration interval
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+    }
 
     // Clean up resources
     if (localStreamRef.current) {
@@ -320,7 +335,14 @@ const Home = () => {
         // Activate video call
         setIsVideoCallActive(true);
         setCallReceiverId(incomingCall.callerId);
+        setCurrentConversationId(incomingCall.conversationId);
         setIncomingCall(null);
+
+        // Start tracking call duration
+        setCallStartTime(new Date());
+        callDurationInterval.current = setInterval(() => {
+          setCallDuration((prev) => prev + 1);
+        }, 1000);
       } catch (error) {
         console.error("Error setting up video call:", error);
       }
@@ -334,6 +356,7 @@ const Home = () => {
         callerId: incomingCall.callerId,
         receiverId: userCurrent._id,
         conversationId: incomingCall.conversationId,
+        message: "Cuộc gọi bị huỷ",
       });
     }
     // Clear all call-related state
@@ -346,21 +369,62 @@ const Home = () => {
   // Handle end call
   const handleEndCall = useCallback(() => {
     if (callReceiverId && userCurrent && socketChat) {
+      console.log("Ending call home neeee...");
+      // Format call duration
+      const duration = formatCallDuration(callDuration);
+      const message = `Cuộc gọi video (${duration})`;
+
+      console.log("conhome", currentConversationId);
       // When the callee ends the call, we need to swap the caller and receiver IDs
       socketChat.emit("END_VIDEO_CALL", {
-        conversationId: incomingCall?.conversationId || "",
+        conversationId: currentConversationId || "",
         callerId: callReceiverId, // The original caller's ID
         receiverId: userCurrent._id, // The current user's ID (callee)
+        message: message,
       });
+
+      // Clean up resources
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+      }
+
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+
+      // Reset all call-related states
+      setIsVideoCallActive(false);
+      setIsCalling(false);
+      setIncomingCall(null);
+      setCallReceiverId(null);
+      setCallReceiverName(null);
+      setCallReceiverAvatar(null);
+      setCallStartTime(null);
+      setCallDuration(0);
+      setCurrentConversationId(null);
+
+      // Clear call duration interval
+      if (callDurationInterval.current) {
+        clearInterval(callDurationInterval.current);
+        callDurationInterval.current = null;
+      }
     }
-    handleVideoCallEnded();
   }, [
     callReceiverId,
     userCurrent,
     socketChat,
-    incomingCall,
-    handleVideoCallEnded,
+    currentConversationId,
+    callDuration,
   ]);
+
+  // Format call duration
+  const formatCallDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   // Handle offer from caller
   const handleOffer = useCallback(
@@ -414,10 +478,51 @@ const Home = () => {
   }, []);
 
   // Handle call ended message
-  const handleCallEnded = useCallback((data: any) => {
-    console.log("Call ended message:", data);
-    // You can add additional logic here if needed
-  }, []);
+  const handleCallEnded = useCallback(
+    async (data: { message: string; senderId: string; receiverId: string }) => {
+      console.log("Call ended message:", data);
+
+      try {
+        console.log("end home");
+        // Chỉ gửi tin nhắn nếu người gửi là người dùng hiện tại
+        // if (data.senderId === userCurrent?._id) {
+        // Tìm conversation dựa trên người nhận
+        const conversation = conversations.find(
+          (c) => c.kind === 1 && c._id === incomingCall?.conversationId
+        );
+
+        if (conversation) {
+          const encryptedMessage = encrypt(
+            data.message.trim(),
+            userCurrent?.secretKey
+          );
+          console.log("message duaration", data.message);
+          await post("/v1/message/create", {
+            conversation: conversation._id,
+            content: encryptedMessage,
+            sender: data.senderId,
+          });
+          console.log("Call ended message saved:", data.message);
+
+          // Nếu đang ở trong conversation này, cập nhật danh sách tin nhắn
+          if (selectedConversation?._id === conversation._id) {
+            handleMessageChange();
+          }
+          // }
+        }
+      } catch (error) {
+        console.error("Error saving call message:", error);
+      }
+    },
+    [
+      userCurrent,
+      conversations,
+      selectedConversation,
+      post,
+      handleMessageChange,
+      incomingCall,
+    ]
+  );
 
   // Set up video call socket
   useSocketVideoCall({

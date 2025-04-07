@@ -104,6 +104,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null); // Lưu stream để quản lý mic/camera
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [callDuration, setCallDuration] = useState<number>(0);
+  const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
 
   const configuration = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -408,6 +411,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log("Offer sent successfully (caller)");
       setIsVideoCallActive(true);
       setIsCalling(true);
+
+      // Bắt đầu đếm thời gian cuộc gọi
+      setCallStartTime(new Date());
+      callDurationInterval.current = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
     } catch (error) {
       console.error("Error starting video call:", error);
       toast.error("Không thể bắt đầu cuộc gọi video.");
@@ -615,9 +624,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       localVideoRef.current.srcObject = null;
       console.log("Cleared localVideoRef");
     }
+
+    // Dừng interval đếm thời gian
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+
     setIsVideoCallActive(false);
     setIsCalling(false);
     setIncomingCall(null);
+    setCallDuration(0);
+    setCallStartTime(null);
     console.log("Video call ended");
   };
 
@@ -626,17 +645,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     senderId: string;
     receiverId: string;
   }) => {
-    // try {
-    //   await post("/v1/message/create", {
-    //     conversation: conversation._id,
-    //     content: data.message,
-    //     sender: data.senderId,
-    //   });
-    //   onMessageChange();
-    // } catch (error) {
-    //   console.error("Error saving call message:", error);
-    // }
-    console.log("Call ended message:", data.message);
+    try {
+      // Chỉ gửi tin nhắn nếu người gửi là người dùng hiện tại
+      if (data.senderId === userCurrent?._id) {
+        console.log("duaration chatwindow", data.message);
+        const encryptedMessage = encrypt(
+          data.message.trim(),
+          userCurrent?.secretKey
+        );
+        await post("/v1/message/create", {
+          conversation: conversation._id,
+          content: encryptedMessage,
+          sender: data.senderId,
+        });
+        onMessageChange();
+        console.log("Call ended message saved:", data.message);
+      }
+    } catch (error) {
+      console.error("Error saving call message:", error);
+    }
   };
 
   const handleStartVideoCall = () => {
@@ -676,6 +703,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       });
       setIsVideoCallActive(true);
       setIncomingCall(null);
+      setCallStartTime(new Date());
+      callDurationInterval.current = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
     }
   };
 
@@ -734,9 +765,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsVideoCallActive(false);
 
       // Only show the toast notification if the user is the caller
-      if (isCalling) {
-        toast.info("Cuộc gọi bị từ chối");
-      }
+      // if (isCalling) {
+      //   toast.info("Cuộc gọi bị từ chối");
+      // }
     },
     onOffer: handleOffer,
     onAnswer: handleAnswer,
@@ -818,6 +849,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     };
   }, [incomingCall]);
+
+  const formatCallDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1098,14 +1135,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           localVideoRef={localVideoRef as React.RefObject<HTMLVideoElement>}
           remoteVideoRef={remoteVideoRef as React.RefObject<HTMLVideoElement>}
           onEndCall={() => {
-            const receiverId = membersList.find(
-              (m) => m.user._id !== userCurrent?._id
-            )?.user._id;
+            console.log("Ending call");
+            const receiverId =
+              membersList.find((m) => m.user._id !== userCurrent?._id)?.user
+                ._id || "";
+            const duration = formatCallDuration(callDuration);
+            console.log("duration chatwindow end:", duration);
+            const message = `Cuộc gọi video (${duration})`;
+
+            // Gửi sự kiện kết thúc cuộc gọi
+            // Nếu người dùng hiện tại là caller, gửi với callerId là userCurrent._id
+            // Nếu người dùng hiện tại là callee, gửi với callerId là receiverId
+            const isCaller = isCalling;
             socketVideo?.emit("END_VIDEO_CALL", {
               conversationId: conversation._id,
-              callerId: userCurrent?._id,
-              receiverId,
+              callerId: isCaller ? userCurrent?._id : receiverId,
+              receiverId: isCaller ? receiverId : userCurrent?._id,
+              message: message,
             });
+
             endVideoCall();
           }}
           callerId={userCurrent?._id}
