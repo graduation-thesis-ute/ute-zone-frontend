@@ -548,7 +548,7 @@ const Home = () => {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
 
-    if (incomingCall) {
+    if (incomingCall && !isVideoCallActive) {
       // Auto-dismiss after 30 seconds if not answered or rejected
       timeoutId = setTimeout(() => {
         console.log("Auto-dismissing incoming call after timeout");
