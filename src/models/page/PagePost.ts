@@ -3,9 +3,9 @@ export interface PagePost {
   content: string;
   imageUrls?: string[];
   createdAt: string;
-  likes: number;
-  comments: number;
-  shares: number;
+  totalReactions: number;
+  totalComments: number;
+  totalShares: number;
   page: {
     _id: string;
     name: string;

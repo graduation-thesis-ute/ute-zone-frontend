@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Image as ImageIcon, Send } from 'lucide-react';
+import { X, Image as ImageIcon, Send, Loader2 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
+import { uploadImage2 } from '../../types/utils';
 
 interface CreatePagePostProps {
   pageId: string;
@@ -10,45 +11,59 @@ interface CreatePagePostProps {
 
 const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPostCreated }) => {
   const [content, setContent] = useState('');
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { post } = useFetch();
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
+    const files = Array.from(e.target.files || []);
+    const fileReaders: Promise<any>[] = [];
+
+    files.forEach((file: File) => {
+      const reader = new FileReader();
+      const readerPromise = new Promise<void>((resolve) => {
         reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          if (i === files.length - 1) {
-            setImageUrls(prev => [...prev, ...newImages]);
-          }
+          setImagePreviews((prev) => [...prev, reader.result as string]);
+          resolve();
         };
-        reader.readAsDataURL(file);
-      }
-    }
+      });
+      reader.readAsDataURL(file);
+      fileReaders.push(readerPromise);
+    });
+
+    Promise.all(fileReaders).catch(() => {
+      console.error("Lỗi khi tải hình ảnh");
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() && imageUrls.length === 0) return;
+    if (!content.trim() && imagePreviews.length === 0) return;
 
     try {
       setIsSubmitting(true);
-      await post('/v1/page-post/create', {
+      
+      // Upload images and get URLs
+      const imageUrls = await Promise.all(
+        imagePreviews.map((imagePreview) => uploadImage2(imagePreview, post))
+      );
+
+      // Create the post with the uploaded image URLs
+      const response = await post('/v1/page-post/create', {
         content,
         imageUrls,
         kind: 1, // Public post
         pageId
       });
       
-      setContent('');
-      setImageUrls([]);
-      onPostCreated();
-      onClose();
+      if (response.result) {
+        setContent('');
+        setImagePreviews([]);
+        onPostCreated();
+        onClose();
+      } else {
+        console.error('Failed to create post:', response.message);
+      }
     } catch (error) {
       console.error('Error creating post:', error);
     } finally {
@@ -57,7 +72,7 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
   };
 
   const removeImage = (index: number) => {
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -79,52 +94,55 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
           />
 
           {/* Image Preview */}
-          {imageUrls.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {imageUrls.map((url, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X size={16} />
-                  </button>
+          <div className="border border-gray-300 rounded-lg p-4 mt-4 relative hover:border-blue-500">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex flex-col items-center justify-center">
+              {imagePreviews.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="flex items-center justify-center">
+                  <ImageIcon className="text-gray-400" size={20} />
+                  <p className="ml-2 text-gray-400">Thêm hình ảnh</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <label className="p-2 hover:bg-gray-100 rounded-full cursor-pointer">
-                <ImageIcon size={24} className="text-blue-500" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-              </label>
-            </div>
-
+          <div className="mt-4 flex justify-end">
             <button
               type="submit"
-              disabled={isSubmitting || (!content.trim() && imageUrls.length === 0)}
+              disabled={isSubmitting || (!content.trim() && imagePreviews.length === 0)}
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                isSubmitting || (!content.trim() && imageUrls.length === 0)
+                isSubmitting || (!content.trim() && imagePreviews.length === 0)
                   ? 'bg-gray-300 cursor-not-allowed'
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
               }`}
             >
               {isSubmitting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                <Loader2 className="animate-spin" size={20} />
               ) : (
                 <Send size={20} />
               )}

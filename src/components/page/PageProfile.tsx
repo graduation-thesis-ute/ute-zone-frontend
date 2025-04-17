@@ -75,6 +75,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
       const data: PagePostResponse = response.data;
       
       if (pageNum === 0) {
+        console.log("data", data);
         setPosts(data.content);
       } else {
         setPosts(prev => [...prev, ...data.content]);
@@ -363,7 +364,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
 
           {/* Action Buttons */}
           <div className="flex space-x-2">
-            <button
+            {/* <button
               onClick={() => setIsFollowing(!isFollowing)}
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
                 isFollowing
@@ -373,11 +374,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
             >
               <Bookmark size={16} />
               <span>{isFollowing ? 'Đã theo dõi' : 'Theo dõi'}</span>
-            </button>
+            </button> */}
             {isPageMember && (
               <button
                 onClick={() => setShowCreatePost(true)}
-                className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className="p-2 rounded-lg bg-blue-300 text-gray-500 hover:bg-blue-600"
               >
                 <Plus size={20} />
               </button>

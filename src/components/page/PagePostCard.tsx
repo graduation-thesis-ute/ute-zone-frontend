@@ -1,164 +1,152 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share2, MoreHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, ThumbsUp } from 'lucide-react';
 import { PagePost } from '../../models/page/PagePost';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import PostDetailDialog from './PostDetailDialog';
 
 interface PagePostCardProps {
   post: PagePost;
+  onPostUpdated?: () => void;
 }
 
-const PagePostCard: React.FC<PagePostCardProps> = ({ post }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated }) => {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [liked, setLiked] = useState(false);
 
-  const handlePrevImage = () => {
-    setCurrentImageIndex((prevIndex) => 
-      prevIndex > 0 ? prevIndex - 1 : (post.imageUrls?.length || 1) - 1
-    );
+  const handlePostClick = () => {
+    setIsDetailOpen(true);
+    console.log("post", post);
   };
 
-  const handleNextImage = () => {
-    setCurrentImageIndex((prevIndex) => 
-      prevIndex < ((post.imageUrls?.length || 1) - 1) ? prevIndex + 1 : 0
-    );
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Vừa xong';
+      return formatDistanceToNow(date, { addSuffix: true, locale: vi });
+    } catch (error) {
+      return 'Vừa xong';
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Post Header */}
-      <div className="flex items-center space-x-3 p-4">
-        <div className="w-10 h-10 rounded-full overflow-hidden">
-          {post.user.avatarUrl ? (
-            <img
-              src={post.user.avatarUrl}
-              alt={post.user.displayName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-              <span className="text-lg text-gray-500">
-                {post.user.displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold">{post.user.displayName}</span>
-            <span className="text-gray-500">•</span>
-            <span className="text-gray-500 text-sm">
-              {formatDistanceToNow(new Date(post.createdAt), {
-                addSuffix: true,
-                locale: vi
-              })}
-            </span>
-          </div>
-        </div>
-        <button className="text-gray-500 hover:text-gray-700">
-          <MoreHorizontal size={20} />
-        </button>
-      </div>
-
-      {/* Post Content */}
-      <div className="px-4">
-        <p className="text-gray-800">{post.content}</p>
-      </div>
-
-      {/* Post Images */}
-      {post.imageUrls && post.imageUrls.length > 0 && (
-        <div className="relative mt-4">
-          {/* Main Image */}
-          <img
-            src={post.imageUrls[currentImageIndex]}
-            alt={`Post image ${currentImageIndex + 1}`}
-            className="w-full max-h-96 object-cover"
-          />
-
-          {/* Image Navigation for Multiple Images */}
-          {post.imageUrls.length > 1 && (
-            <>
-              {/* Previous Image Button */}
-              <button 
-                onClick={handlePrevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
-              >
-                <ChevronLeft size={24} />
-              </button>
-
-              {/* Next Image Button */}
-              <button 
-                onClick={handleNextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
-              >
-                <ChevronRight size={24} />
-              </button>
-
-              {/* Image Count Indicator */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white px-2 py-1 rounded-full text-sm">
-                {currentImageIndex + 1} / {post.imageUrls.length}
+    <>
+      <div className="bg-white rounded-xl shadow hover:shadow-md transition-all duration-200">
+        {/* Header */}
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <img
+                  src={post.page?.avatarUrl || '/default-avatar.png'}
+                  alt={post.page?.name}
+                  className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
+                />
+                {!post.page?.avatarUrl && (
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 opacity-50" />
+                )}
               </div>
-            </>
-          )}
-
-          {/* Thumbnail Preview for Multiple Images */}
-          {post.imageUrls.length > 1 && (
-            <div className="flex justify-center space-x-2 mt-2 px-4 py-2">
-              {post.imageUrls.map((url, index) => (
-                <div 
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`w-12 h-12 rounded-md overflow-hidden cursor-pointer border-2 ${
-                    index === currentImageIndex 
-                      ? 'border-blue-500' 
-                      : 'border-transparent opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  <img 
-                    src={url} 
-                    alt={`Thumbnail ${index + 1}`} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+              <div>
+                <h3 className="font-semibold text-[15px] text-gray-900 hover:underline cursor-pointer">
+                  {post.page?.name}
+                </h3>
+                <p className="text-xs text-gray-500 flex items-center space-x-2">
+                  <span>{formatTime(post.createdAt)}</span>
+                </p>
+              </div>
             </div>
-          )}
+            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <MoreHorizontal size={20} className="text-gray-600" />
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Post Stats */}
-      <div className="px-4 py-2 border-t border-b">
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <div className="flex items-center space-x-1">
-            <Heart size={16} className="text-red-500" />
-            <span>{post.likes}</span>
+        {/* Content */}
+        <div className="px-4 pb-3">
+          <p className="text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {post.content}
+          </p>
+        </div>
+
+        {/* Images */}
+        {post.imageUrls && post.imageUrls.length > 0 && (
+          <div 
+            className={`grid gap-1 ${
+              post.imageUrls.length === 1 ? 'grid-cols-1' :
+              post.imageUrls.length === 2 ? 'grid-cols-2' :
+              post.imageUrls.length === 3 ? 'grid-cols-2' : 
+              'grid-cols-2'
+            }`}
+          >
+            {post.imageUrls.map((url, index) => (
+              <div 
+                key={index} 
+                className={`relative ${
+                  post.imageUrls?.length === 3 && index === 0 ? 'col-span-2' : ''
+                }`}
+              >
+                <img
+                  src={url}
+                  alt={`Post image ${index + 1}`}
+                  className="w-full h-full object-cover hover:opacity-95 transition-opacity cursor-pointer"
+                  style={{ maxHeight: post.imageUrls?.length === 1 ? '500px' : '300px' }}
+                  onClick={handlePostClick}
+                />
+              </div>
+            ))}
           </div>
-          <div className="flex items-center space-x-1">
-            <MessageCircle size={16} />
-            <span>{post.comments} bình luận</span>
+        )}
+
+        {/* Interaction counts */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-b mt-3">
+          <div className="flex items-center space-x-2">
+            {post.totalReactions > 0 && (
+              <>
+                <div className="bg-blue-500 rounded-full p-1">
+                  <ThumbsUp size={12} className="text-white" />
+                </div>
+                <span className="text-sm text-gray-500">{post.totalReactions}</span>
+              </>
+            )}
           </div>
-          <div className="flex items-center space-x-1">
-            <Share2 size={16} />
-            <span>{post.shares} chia sẻ</span>
+          <div className="flex items-center space-x-3 text-sm text-gray-500">
+            <span>{post.totalComments || 0} bình luận</span>
+            <span>{post.totalShares || 0} lượt chia sẻ</span>
           </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="px-2 py-1 flex justify-between">
+          <button 
+            onClick={() => setLiked(!liked)}
+            className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-lg hover:bg-gray-100 transition-colors ${
+              liked ? 'text-blue-500' : 'text-gray-600'
+            }`}
+          >
+            <ThumbsUp size={20} />
+            <span className="font-medium text-sm">Thích</span>
+          </button>
+          <button 
+            onClick={handlePostClick}
+            className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+          >
+            <MessageCircle size={20} />
+            <span className="font-medium text-sm">Bình luận</span>
+          </button>
+          <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
+            <Share2 size={20} />
+            <span className="font-medium text-sm">Chia sẻ</span>
+          </button>
         </div>
       </div>
 
-      {/* Post Actions */}
-      <div className="flex items-center justify-between px-4 py-2">
-        <button className="flex items-center space-x-2 flex-1 justify-center py-2 rounded-lg text-gray-500 hover:bg-gray-100">
-          <Heart size={20} />
-          <span>Thích</span>
-        </button>
-        <button className="flex items-center space-x-2 flex-1 justify-center py-2 rounded-lg text-gray-500 hover:bg-gray-100">
-          <MessageCircle size={20} />
-          <span>Bình luận</span>
-        </button>
-        <button className="flex items-center space-x-2 flex-1 justify-center py-2 rounded-lg text-gray-500 hover:bg-gray-100">
-          <Share2 size={20} />
-          <span>Chia sẻ</span>
-        </button>
-      </div>
-    </div>
+      <PostDetailDialog
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        post={post}
+        onPostUpdated={onPostUpdated}
+      />
+    </>
   );
 };
 
