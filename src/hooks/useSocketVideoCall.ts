@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Socket } from "socket.io-client";
 
 interface UseSocketVideoCallProps {
-  socket: Socket | null; // Nhận socket từ ngoài thay vì tạo mới
+  socket: Socket | null;
   onIncomingVideoCall?: (data: {
     callerId: string;
     callerName: string;
@@ -11,6 +11,8 @@ interface UseSocketVideoCallProps {
   }) => void;
   onVideoCallAccepted?: (data: {
     receiverId: string;
+    receiverName: string;
+    receiverAvatar: string;
     conversationId: string;
   }) => void;
   onVideoCallRejected?: (data: {
@@ -20,12 +22,10 @@ interface UseSocketVideoCallProps {
   onOffer?: (data: any) => void;
   onAnswer?: (data: any) => void;
   onIceCandidate?: (data: any) => void;
-  onVideoCallEnded?: (data: { callerId?: string; receiverId?: string }) => void;
-  onCallEnded?: (data: {
-    message: string;
-    senderId: string;
-    receiverId: string;
-  }) => void;
+  onEndCallWhileCallingByCaller?: () => void;
+  onEndCallWhileCallingByReceiver?: () => void;
+  onEndCallByCaller?: () => void;
+  onEndCallByReceiver?: () => void;
 }
 
 export const useSocketVideoCall = ({
@@ -36,8 +36,10 @@ export const useSocketVideoCall = ({
   onOffer,
   onAnswer,
   onIceCandidate,
-  onVideoCallEnded,
-  onCallEnded,
+  onEndCallWhileCallingByCaller,
+  onEndCallWhileCallingByReceiver,
+  onEndCallByCaller,
+  onEndCallByReceiver,
 }: UseSocketVideoCallProps) => {
   useEffect(() => {
     if (!socket) {
@@ -50,7 +52,6 @@ export const useSocketVideoCall = ({
       socket.connected ? "connected" : "disconnected"
     );
 
-    // Handle socket connection events
     socket.on("connect", () => {
       console.log("Socket connected in useSocketVideoCall");
     });
@@ -63,55 +64,58 @@ export const useSocketVideoCall = ({
       console.warn("Socket disconnected:", reason);
     });
 
-    // Handle incoming video call
+    // Video call events
     socket.on("INCOMING_VIDEO_CALL", (data) => {
       console.log("FE received INCOMING_VIDEO_CALL:", data);
       if (onIncomingVideoCall) onIncomingVideoCall(data);
     });
 
-    // Handle video call accepted
     socket.on("VIDEO_CALL_ACCEPTED", (data) => {
       console.log("FE received VIDEO_CALL_ACCEPTED:", data);
       if (onVideoCallAccepted) onVideoCallAccepted(data);
     });
 
-    // Handle video call rejected
     socket.on("VIDEO_CALL_REJECTED", (data) => {
       console.log("FE received VIDEO_CALL_REJECTED:", data);
       if (onVideoCallRejected) {
-        // Clear all call-related state
         onVideoCallRejected(data);
       }
     });
 
-    // Handle video call ended
-    socket.on("VIDEO_CALL_ENDED", (data) => {
-      console.log("FE received VIDEO_CALL_ENDED:", data);
-      if (onVideoCallEnded) onVideoCallEnded(data);
-    });
-
-    // Handle offer
+    // WebRTC signaling events
     socket.on("OFFER", (data) => {
       console.log("FE received OFFER:", data);
       if (onOffer) onOffer(data);
     });
 
-    // Handle answer
     socket.on("ANSWER", (data) => {
       console.log("FE received ANSWER:", data);
       if (onAnswer) onAnswer(data);
     });
 
-    // Handle ICE candidate
     socket.on("ICE_CANDIDATE", (data) => {
       console.log("FE received ICE_CANDIDATE:", data);
       if (onIceCandidate) onIceCandidate(data);
     });
 
-    // Handle call ended message
-    socket.on("CALL_ENDED", (data) => {
-      console.log("FE received CALL_ENDED:", data);
-      if (onCallEnded) onCallEnded(data);
+    socket.on("END_CALL_WHILE_CALLING_BY_CALLER", () => {
+      console.log("FE received END_CALL_WHILE_CALLING_BY_CALLER");
+      if (onEndCallWhileCallingByCaller) onEndCallWhileCallingByCaller();
+    });
+
+    socket.on("END_CALL_WHILE_CALLING_BY_RECEIVER", () => {
+      console.log("FE received END_CALL_WHILE_CALLING_BY_RECEIVER");
+      if (onEndCallWhileCallingByReceiver) onEndCallWhileCallingByReceiver();
+    });
+
+    socket.on("END_VIDEO_CALL_BY_CALLER", () => {
+      console.log("FE received END_VIDEO_CALL_BY_CALLER:");
+      if (onEndCallByCaller) onEndCallByCaller();
+    });
+
+    socket.on("END_VIDEO_CALL_BY_RECEIVER", () => {
+      console.log("FE received END_VIDEO_CALL_BY_RECEIVER:");
+      if (onEndCallByReceiver) onEndCallByReceiver();
     });
 
     // Clean up event listeners
@@ -127,7 +131,10 @@ export const useSocketVideoCall = ({
       socket.off("OFFER");
       socket.off("ANSWER");
       socket.off("ICE_CANDIDATE");
-      socket.off("CALL_ENDED");
+      socket.off("END_CALL_WHILE_CALLING_BY_CALLER");
+      socket.off("END_CALL_WHILE_CALLING_BY_RECEIVER");
+      socket.off("END_VIDEO_CALL_BY_CALLER");
+      socket.off("END_VIDEO_CALL_BY_RECEIVER");
     };
   }, [
     socket,
@@ -137,11 +144,9 @@ export const useSocketVideoCall = ({
     onOffer,
     onAnswer,
     onIceCandidate,
-    onVideoCallEnded,
-    onCallEnded,
   ]);
 
-  return socket; // Trả về socket để sử dụng nếu cần
+  return socket;
 };
 
 export default useSocketVideoCall;

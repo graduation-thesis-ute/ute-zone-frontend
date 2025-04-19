@@ -13,50 +13,46 @@ import {
 } from "lucide-react";
 
 interface VideoCallModalProps {
-  localVideoRef: React.RefObject<HTMLVideoElement>;
-  remoteVideoRef: React.RefObject<HTMLVideoElement>;
-  onEndCall: () => void;
-  callerId: string | undefined;
-  receiverId: string;
-  receiverName?: string;
-  receiverAvatar?: string;
-  callerName?: string;
-  callerAvatar?: string;
   localStream?: MediaStream | null;
+  remoteStream?: MediaStream | null;
+  onEndCall: () => void;
+  callerName: string;
+  callerAvatar: string;
+  receiverName: string;
+  receiverAvatar: string;
 }
 
 const VideoCallModal: React.FC<VideoCallModalProps> = ({
-  localVideoRef,
-  remoteVideoRef,
+  localStream,
+  remoteStream,
   onEndCall,
-  callerId,
-  receiverId,
-  receiverName,
-  receiverAvatar,
   callerName,
   callerAvatar,
-  localStream,
+  receiverName,
+  receiverAvatar,
 }) => {
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
+
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isConnectionStrong, setIsConnectionStrong] = useState(true);
   const [showControlsTimer, setShowControlsTimer] =
     useState<NodeJS.Timeout | null>(null);
   const [areControlsVisible, setAreControlsVisible] = useState(true);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize localStreamRef when localStream prop changes
   useEffect(() => {
-    if (localStream) {
-      localStreamRef.current = localStream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-      }
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
     }
-  }, [localStream, localVideoRef]);
+    if (remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [localStream, remoteStream]);
 
   // Format time for display
   const formatTime = (seconds: number) => {
@@ -117,8 +113,8 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
 
   // Function to toggle mic
   const toggleMic = () => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
       audioTracks.forEach((track) => (track.enabled = !isMicOn));
       setIsMicOn(!isMicOn);
     }
@@ -126,8 +122,8 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
 
   // Function to toggle camera
   const toggleCamera = () => {
-    if (localStreamRef.current) {
-      const videoTracks = localStreamRef.current.getVideoTracks();
+    if (localStream) {
+      const videoTracks = localStream.getVideoTracks();
       videoTracks.forEach((track) => (track.enabled = !isCameraOn));
       setIsCameraOn(!isCameraOn);
     }
@@ -149,8 +145,8 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   };
 
   // Get display names
-  const displayReceiverName = receiverName || receiverId;
-  const displayCallerName = callerName || callerId || "You";
+  const displayReceiverName = receiverName;
+  const displayCallerName = callerName;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
@@ -190,14 +186,11 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
             <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-2 border-2 border-blue-400 shadow-lg">
               <img
                 src={receiverAvatar}
-                alt={displayReceiverName}
+                alt={displayReceiverName || "Receiver"}
                 className="w-full h-full object-cover"
               />
             </div>
           )}
-          <h2 className="text-xl font-bold text-white drop-shadow-lg">
-            {displayReceiverName}
-          </h2>
         </div>
 
         {/* Local Video with border indicator for mic status */}
@@ -220,13 +213,15 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
               {callerAvatar ? (
                 <img
                   src={callerAvatar}
-                  alt={displayCallerName}
+                  alt={displayCallerName || "Caller"}
                   className="w-16 h-16 rounded-full"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
                   <span className="text-white text-lg font-bold">
-                    {displayCallerName.charAt(0).toUpperCase()}
+                    {displayCallerName
+                      ? displayCallerName.charAt(0).toUpperCase()
+                      : ""}
                   </span>
                 </div>
               )}

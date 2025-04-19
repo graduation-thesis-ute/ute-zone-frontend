@@ -11,21 +11,26 @@ import FriendsList from "../components/friend/FriendsList";
 import GroupList from "../components/friend/GroupList";
 import FriendRequests from "../components/friend/FriendRequests";
 import PostListItem from "../components/post/pages/PostListItem";
-//import MyPosts from "../components/post/pages/MyPosts";
 import MyPosts from "../components/post/pages/MyPosts";
 import FriendsPosts from "../components/post/pages/FriendsPosts";
 import CommunityPosts from "../components/post/pages/CommunityPosts";
 import useSocketChat from "../hooks/useSocketChat";
-import useSocketVideoCall from "../hooks/useSocketVideoCall";
+import { useSocketVideoCall } from "../hooks/useSocketVideoCall";
 import { remoteUrl } from "../types/constant";
 import { Menu, X } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
 import { useProfile } from "../types/UserContext";
-import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import VideoCallModal from "../components/chat/VideoCallModal";
-import CallingPopup from "../components/chat/CallingPopup";
 import { encrypt } from "../types/utils";
+import IncomingCallPopup from "../components/chat/IncomingCallPopup";
+
+export interface CallData {
+  callerId: string;
+  callerName: string;
+  callerAvatar: string;
+  conversationId: string;
+}
 
 const Home = () => {
   const [selectedSection, setSelectedSection] = useState("messages");
@@ -39,65 +44,79 @@ const Home = () => {
   const { get, post } = useFetch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
-  const [incomingCall, setIncomingCall] = useState<{
-    callerId: string;
-    callerName: string;
-    callerAvatar: string;
-    conversationId: string;
-  } | null>(null);
-  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
-  const [isCalling, setIsCalling] = useState(false);
-  const [callReceiverId, setCallReceiverId] = useState<string | null>(null);
-  const [callReceiverName, setCallReceiverName] = useState<string | null>(null);
-  const [callReceiverAvatar, setCallReceiverAvatar] = useState<string | null>(
+
+  const [isInfoComingCall, setIsInfoComingCall] = useState<CallData | null>(
     null
   );
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
-  const [callDuration, setCallDuration] = useState<number>(0);
-  const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
-  const [currentConversationId, setCurrentConversationId] = useState<
-    string | null
-  >(null);
+  const [isComingCall, setIsComingCall] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
   const { profile, setProfile } = useProfile();
 
+  const initializePeerConnection = () => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+      ],
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && isInfoComingCall) {
+        socketVideo?.emit("ICE_CANDIDATE", {
+          to: isInfoComingCall.callerId,
+          from: userCurrent?._id,
+          candidate: event.candidate,
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      if (event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "failed") {
+        handleEndCallFromCaller();
+      }
+    };
+
+    peerConnectionRef.current = pc;
+    return pc;
+  };
+
   const handleConversationUpdate = useCallback(
     async (updatedConversation: Conversation) => {
-      console.log("Conversation updated in Home:", updatedConversation);
       const response = await get(
         `/v1/conversation/get/${updatedConversation._id}`
       );
-      const updatedConversationObject = response.data;
-      console.log("Updated conversation object:", updatedConversationObject);
-      setSelectedConversation(updatedConversationObject);
+      setSelectedConversation(response.data);
     },
-    []
+    [get]
   );
 
-  const handleLeaveGroup = useCallback(
-    async (updatedConversation: Conversation) => {
-      console.log("Updated conversation object:", updatedConversation);
-      setSelectedConversation(null);
-    },
-    []
-  );
+  const handleLeaveGroup = useCallback(() => {
+    setSelectedConversation(null);
+  }, []);
 
   const handleFowardToConversation = useCallback(
     async (idConversation: string) => {
-      console.log("id Conversation updated in Home:", idConversation);
       const response = await get(`/v1/conversation/get/${idConversation}`);
-      const updatedConversationObject = response.data;
-      console.log("Updated conversation object:", updatedConversationObject);
-      setSelectedConversation(updatedConversationObject);
+      setSelectedConversation(response.data);
     },
-    []
+    [get]
   );
 
   const fetchUserCurrent = useCallback(async () => {
@@ -105,30 +124,19 @@ const Home = () => {
       const response = await get("/v1/user/profile");
       setUserCurrent(response.data);
       setProfile(response.data);
-      console.log("User ID fetched in Home:", response.data._id);
     } catch (error) {
       console.error("Error getting user id:", error);
     }
-  }, [get]);
+  }, [get, setProfile]);
 
   const fetchConversations = useCallback(async () => {
-    // if (selectedSection !== "messages" || !userCurrent) return;
     try {
-      const response = await get("/v1/conversation/list", {
-        isPaged: 0,
-      });
-      const conversations = response.data.content;
-      console.log("Fetching conversations...", conversations);
-      // const filteredConversations = conversations.filter(
-      //   (conversation: Conversation) =>
-      //     conversation.lastMessage || conversation.kind === 1
-      // );
-      // setConversations(filteredConversations);
-      setConversations(conversations);
+      const response = await get("/v1/conversation/list", { isPaged: 0 });
+      setConversations(response.data.content);
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }
-  }, [selectedSection, get, userCurrent]);
+  }, [get]);
 
   useEffect(() => {
     fetchUserCurrent();
@@ -139,25 +147,23 @@ const Home = () => {
       fetchConversations();
     }
   }, [selectedSection, userCurrent, fetchConversations]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsLargeScreen(window.innerWidth >= 1024);
     };
     window.addEventListener("resize", handleResize);
-
-    // Xóa sự kiện lắng nghe khi component unmount
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
   const handleMessageChange = useCallback(() => {
     if (selectedSection === "messages" && userCurrent) {
-      console.log("Message changed, updating conversations...");
       fetchConversations();
     }
   }, [fetchConversations, selectedSection, userCurrent]);
 
   const handleNewMessageHome = useCallback(
     (messageId: string) => {
-      console.log("New message received in Home:", messageId);
       handleMessageChange();
     },
     [handleMessageChange]
@@ -165,7 +171,6 @@ const Home = () => {
 
   const handleUpdateMessageHome = useCallback(
     (messageId: string) => {
-      console.log("Message updated in Home:", messageId);
       handleMessageChange();
     },
     [handleMessageChange]
@@ -173,18 +178,13 @@ const Home = () => {
 
   const handleDeleteMessageHome = useCallback(
     (messageId: string) => {
-      console.log("Message deleted in Home:", messageId);
       handleMessageChange();
     },
     [handleMessageChange]
   );
 
-  const handleUpdateConversation = useCallback(() => {
-    console.log("Conversation updated in Home");
-    // handleMessageChange();
-  }, []);
+  const handleUpdateConversation = useCallback(() => {}, []);
 
-  // Initialize socket connection
   const socketChat = useSocketChat({
     userId: userCurrent?._id,
     remoteUrl,
@@ -195,383 +195,166 @@ const Home = () => {
     onHandleUpdateConversation: handleUpdateConversation,
   });
 
-  // Handle incoming video call
-  const handleIncomingVideoCall = useCallback(
-    async (data: {
-      callerId: string;
-      callerName: string;
-      callerAvatar: string;
-      conversationId: string;
-    }) => {
-      console.log("Incoming video call in Home:", data);
-      setIncomingCall(data);
-
-      // Fetch caller information
-      try {
-        const response = await get(`/v1/user/profile/${data.callerId}`);
-        if (response.data) {
-          setCallReceiverName(response.data.displayName);
-          setCallReceiverAvatar(response.data.avatarUrl);
+  const socketVideo = useSocketVideoCall({
+    socket: socketChat,
+    onIncomingVideoCall: (data: CallData) => {
+      setIsInfoComingCall(data);
+      setIsComingCall(true);
+    },
+    onVideoCallRejected: () => {
+      setIsComingCall(false);
+      setIsInfoComingCall(null);
+    },
+    onEndCallByCaller: () => {
+      handleEndCallFromCaller();
+    },
+    onOffer: async (data: any) => {
+      if (
+        isInfoComingCall &&
+        data.from === isInfoComingCall.callerId &&
+        peerConnectionRef.current
+      ) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          await createAnswer();
+        } catch (error) {
+          console.error("Home: Error handling offer:", error);
         }
+      }
+    },
+    onAnswer: async (data: any) => {
+      if (
+        isInfoComingCall &&
+        data.from === isInfoComingCall.callerId &&
+        peerConnectionRef.current
+      ) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+        } catch (error) {
+          console.error("Home: Error handling answer:", error);
+        }
+      }
+    },
+    onIceCandidate: async (data: any) => {
+      if (
+        isInfoComingCall &&
+        data.from === isInfoComingCall.callerId &&
+        peerConnectionRef.current
+      ) {
+        try {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          console.error("Home: Error adding ICE candidate:", error);
+        }
+      }
+    },
+    onEndCallWhileCallingByCaller: () => {
+      console.log("Cuộc gọi đã bị từ chối bởi người gọi HOME.");
+      setIsComingCall(false);
+      setIsInfoComingCall(null);
+    },
+  });
+
+  const acceptCall = async () => {
+    if (!isInfoComingCall) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream);
+      const pc = initializePeerConnection();
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      socketVideo?.emit("ACCEPT_VIDEO_CALL", {
+        callerId: isInfoComingCall.callerId,
+        receiverId: userCurrent?._id,
+        receiverName: userCurrent?.displayName,
+        receiverAvatar: userCurrent?.avatarUrl,
+        conversationId: isInfoComingCall.conversationId,
+      });
+
+      setIsVideoCallActive(true);
+      setIsComingCall(false);
+    } catch (error) {
+      console.error("Error accepting call:", error);
+      alert("Không thể truy cập camera hoặc micro.");
+    }
+  };
+
+  const createAnswer = async () => {
+    if (peerConnectionRef.current && isInfoComingCall) {
+      try {
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socketVideo?.emit("ANSWER", {
+          to: isInfoComingCall.callerId,
+          from: userCurrent?._id,
+          sdp: answer,
+        });
       } catch (error) {
-        console.error("Error fetching caller information:", error);
+        console.error("Home: Error creating answer:", error);
       }
-    },
-    [get]
-  );
+    }
+  };
 
-  // Handle video call accepted
-  const handleVideoCallAccepted = useCallback(
-    (data: { receiverId: string; conversationId: string }) => {
-      console.log("Video call accepted in Home:", data);
-      // Find the conversation and select it
-      const conversation = conversations.find(
-        (c) => c._id === data.conversationId
-      );
-      if (conversation) {
-        setSelectedConversation(conversation);
-        setSelectedSection("messages");
-      }
-    },
-    [conversations]
-  );
+  const rejectCall = () => {
+    if (isInfoComingCall) {
+      socketVideo?.emit("END_CALL_WHILE_CALLING_FROM_RECEIVER", {
+        callerId: isInfoComingCall.callerId,
+      });
+      setIsComingCall(false);
+      setIsInfoComingCall(null);
+    }
+  };
 
-  // Handle video call rejected
-  const handleVideoCallRejected = useCallback(() => {
-    console.log("Video call rejected in Home");
-    setIncomingCall(null);
-    setCallReceiverId(null);
-    setCallReceiverName(null);
-    setCallReceiverAvatar(null);
-  }, []);
-
-  // Handle video call ended
-  const handleVideoCallEnded = useCallback(() => {
-    console.log("Video call ended in Home");
-    setIsVideoCallActive(false);
-    setIsCalling(false);
-    setIncomingCall(null);
-    setCallReceiverId(null);
-    setCallStartTime(null);
-    setCallDuration(0);
-
-    // Clear call duration interval
-    if (callDurationInterval.current) {
-      clearInterval(callDurationInterval.current);
-      callDurationInterval.current = null;
+  const handleEndCallFromReceiver = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
 
-    // Clean up resources
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+
+    if (isInfoComingCall) {
+      socketVideo?.emit("END_VIDEO_CALL_FROM_RECEIVER", {
+        callerId: isInfoComingCall.callerId,
+      });
+      setIsInfoComingCall(null);
+    }
+    peerConnectionRef.current = null;
+  };
+
+  const handleEndCallFromCaller = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
     }
 
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
-  }, []);
-
-  // Handle accept call
-  const handleAcceptCall = useCallback(async () => {
-    if (incomingCall && userCurrent) {
-      // Set up video call
-      try {
-        // Create peer connection
-        const configuration = {
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-        };
-
-        peerConnectionRef.current = new RTCPeerConnection(configuration);
-
-        // Get local media stream
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-
-        localStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-
-        // Add tracks to peer connection
-        stream.getTracks().forEach((track) => {
-          if (localStreamRef.current) {
-            peerConnectionRef.current?.addTrack(track, localStreamRef.current);
-          }
-        });
-
-        // Set up event handlers
-        peerConnectionRef.current.onicecandidate = (event) => {
-          if (event.candidate && socketChat) {
-            socketChat.emit("ICE_CANDIDATE", {
-              to: incomingCall.callerId,
-              candidate: event.candidate,
-            });
-          }
-        };
-
-        peerConnectionRef.current.ontrack = (event) => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-        };
-
-        // Create and send answer
-        const offer = await peerConnectionRef.current.createOffer();
-        await peerConnectionRef.current.setLocalDescription(offer);
-
-        if (socketChat) {
-          socketChat.emit("ANSWER", {
-            to: incomingCall.callerId,
-            answer: offer,
-          });
-        }
-
-        // Accept the call
-        if (socketChat) {
-          socketChat.emit("ACCEPT_VIDEO_CALL", {
-            callerId: incomingCall.callerId,
-            receiverId: userCurrent._id,
-            conversationId: incomingCall.conversationId,
-          });
-        }
-
-        // Activate video call
-        setIsVideoCallActive(true);
-        setCallReceiverId(incomingCall.callerId);
-        setCurrentConversationId(incomingCall.conversationId);
-        setIncomingCall(null);
-
-        // Start tracking call duration
-        setCallStartTime(new Date());
-        callDurationInterval.current = setInterval(() => {
-          setCallDuration((prev) => prev + 1);
-        }, 1000);
-      } catch (error) {
-        console.error("Error setting up video call:", error);
-      }
-    }
-  }, [incomingCall, userCurrent, socketChat]);
-
-  // Handle reject call
-  const handleRejectCall = useCallback(() => {
-    if (incomingCall && userCurrent && socketChat) {
-      socketChat.emit("REJECT_VIDEO_CALL", {
-        callerId: incomingCall.callerId,
-        receiverId: userCurrent._id,
-        conversationId: incomingCall.conversationId,
-        message: "Cuộc gọi bị huỷ",
-      });
-    }
-    // Clear all call-related state
-    setIncomingCall(null);
-    setCallReceiverId(null);
-    setCallReceiverName(null);
-    setCallReceiverAvatar(null);
-  }, [incomingCall, userCurrent, socketChat]);
-
-  // Handle end call
-  const handleEndCall = useCallback(() => {
-    if (callReceiverId && userCurrent && socketChat) {
-      console.log("Ending call home neeee...");
-      // Format call duration
-      const duration = formatCallDuration(callDuration);
-      const message = `Cuộc gọi video (${duration})`;
-
-      console.log("conhome", currentConversationId);
-      // When the callee ends the call, we need to swap the caller and receiver IDs
-      socketChat.emit("END_VIDEO_CALL", {
-        conversationId: currentConversationId || "",
-        callerId: callReceiverId, // The original caller's ID
-        receiverId: userCurrent._id, // The current user's ID (callee)
-        message: message,
-      });
-
-      // Clean up resources
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-        localStreamRef.current = null;
-      }
-
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-
-      // Reset all call-related states
-      setIsVideoCallActive(false);
-      setIsCalling(false);
-      setIncomingCall(null);
-      setCallReceiverId(null);
-      setCallReceiverName(null);
-      setCallReceiverAvatar(null);
-      setCallStartTime(null);
-      setCallDuration(0);
-      setCurrentConversationId(null);
-
-      // Clear call duration interval
-      if (callDurationInterval.current) {
-        clearInterval(callDurationInterval.current);
-        callDurationInterval.current = null;
-      }
-    }
-  }, [
-    callReceiverId,
-    userCurrent,
-    socketChat,
-    currentConversationId,
-    callDuration,
-  ]);
-
-  // Format call duration
-  const formatCallDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+    peerConnectionRef.current = null;
+    console.log("Call ended by caller HOME.");
   };
-
-  // Handle offer from caller
-  const handleOffer = useCallback(
-    async (data: any) => {
-      if (!peerConnectionRef.current || !localStreamRef.current) return;
-
-      try {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(data.offer)
-        );
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
-
-        if (socketChat) {
-          socketChat.emit("ANSWER", {
-            to: data.from,
-            answer: answer,
-          });
-        }
-      } catch (error) {
-        console.error("Error handling offer:", error);
-      }
-    },
-    [socketChat]
-  );
-
-  // Handle answer from callee
-  const handleAnswer = useCallback(async (data: any) => {
-    if (!peerConnectionRef.current) return;
-
-    try {
-      await peerConnectionRef.current.setRemoteDescription(
-        new RTCSessionDescription(data.answer)
-      );
-    } catch (error) {
-      console.error("Error handling answer:", error);
-    }
-  }, []);
-
-  // Handle ICE candidate
-  const handleIceCandidate = useCallback(async (data: any) => {
-    if (!peerConnectionRef.current) return;
-
-    try {
-      await peerConnectionRef.current.addIceCandidate(
-        new RTCIceCandidate(data.candidate)
-      );
-    } catch (error) {
-      console.error("Error adding ICE candidate:", error);
-    }
-  }, []);
-
-  // Handle call ended message
-  const handleCallEnded = useCallback(
-    async (data: { message: string; senderId: string; receiverId: string }) => {
-      console.log("Call ended message:", data);
-
-      try {
-        console.log("end home");
-        // Chỉ gửi tin nhắn nếu người gửi là người dùng hiện tại
-        // if (data.senderId === userCurrent?._id) {
-        // Tìm conversation dựa trên người nhận
-        const conversation = conversations.find(
-          (c) => c.kind === 1 && c._id === incomingCall?.conversationId
-        );
-
-        if (conversation) {
-          const encryptedMessage = encrypt(
-            data.message.trim(),
-            userCurrent?.secretKey
-          );
-          console.log("message duaration", data.message);
-          await post("/v1/message/create", {
-            conversation: conversation._id,
-            content: encryptedMessage,
-            sender: data.senderId,
-          });
-          console.log("Call ended message saved:", data.message);
-
-          // Nếu đang ở trong conversation này, cập nhật danh sách tin nhắn
-          if (selectedConversation?._id === conversation._id) {
-            handleMessageChange();
-          }
-          // }
-        }
-      } catch (error) {
-        console.error("Error saving call message:", error);
-      }
-    },
-    [
-      userCurrent,
-      conversations,
-      selectedConversation,
-      post,
-      handleMessageChange,
-      incomingCall,
-    ]
-  );
-
-  // Set up video call socket
-  useSocketVideoCall({
-    socket: socketChat,
-    onIncomingVideoCall: handleIncomingVideoCall,
-    onVideoCallAccepted: handleVideoCallAccepted,
-    onVideoCallRejected: handleVideoCallRejected,
-    onVideoCallEnded: handleVideoCallEnded,
-    onOffer: handleOffer,
-    onAnswer: handleAnswer,
-    onIceCandidate: handleIceCandidate,
-    onCallEnded: handleCallEnded,
-  });
-
-  // Auto-dismiss incoming call after timeout
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    if (incomingCall && !isVideoCallActive) {
-      // Auto-dismiss after 30 seconds if not answered or rejected
-      timeoutId = setTimeout(() => {
-        console.log("Auto-dismissing incoming call after timeout");
-        if (socketChat && userCurrent) {
-          socketChat.emit("END_VIDEO_CALL", {
-            conversationId: incomingCall.conversationId,
-            callerId: incomingCall.callerId,
-            receiverId: userCurrent._id,
-            message: "Cuộc gọi nhỡ",
-          });
-        }
-        setIncomingCall(null);
-        setIsCalling(false);
-        setIsVideoCallActive(false);
-      }, 30000); // 30 seconds timeout
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [incomingCall, socketChat, userCurrent]);
 
   return (
     <div className="flex h-screen">
@@ -684,7 +467,6 @@ const Home = () => {
               )}
             </div>
 
-            {/* Phần thông báo */}
             {isLargeScreen && (
               <div className="flex-1 bg-gray-100 p-4">
                 <NotificationPanel />
@@ -694,30 +476,24 @@ const Home = () => {
         ) : null}
       </div>
 
-      {/* Incoming call popup */}
-      {incomingCall && (
+      {isComingCall && isInfoComingCall && (
         <IncomingCallPopup
-          callerId={incomingCall.callerId}
-          callerName={incomingCall.callerName}
-          callerAvatar={incomingCall.callerAvatar}
-          onAcceptCall={handleAcceptCall}
-          onRejectCall={handleRejectCall}
+          callerName={isInfoComingCall.callerName}
+          callerAvatar={isInfoComingCall.callerAvatar}
+          onAcceptCall={acceptCall}
+          onRejectCall={rejectCall}
         />
       )}
 
-      {/* Video call modal */}
       {isVideoCallActive && (
         <VideoCallModal
-          localVideoRef={localVideoRef as React.RefObject<HTMLVideoElement>}
-          remoteVideoRef={remoteVideoRef as React.RefObject<HTMLVideoElement>}
-          onEndCall={handleEndCall}
-          callerId={userCurrent?._id}
-          receiverId={callReceiverId || ""}
-          receiverName={callReceiverName || undefined}
-          receiverAvatar={callReceiverAvatar || undefined}
-          callerName={userCurrent?.displayName}
-          callerAvatar={userCurrent?.avatarUrl}
-          localStream={localStreamRef.current}
+          localStream={localStream}
+          remoteStream={remoteStream}
+          callerName={isInfoComingCall?.callerName || ""}
+          callerAvatar={isInfoComingCall?.callerAvatar || ""}
+          receiverName={userCurrent?.displayName || ""}
+          receiverAvatar={userCurrent?.avatarUrl || ""}
+          onEndCall={handleEndCallFromReceiver}
         />
       )}
 
