@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Phone, PhoneOff, User } from "lucide-react";
 
 interface IncomingCallPopupProps {
-  callerId: string;
   callerName?: string;
   callerAvatar?: string;
   onAcceptCall: () => void;
@@ -10,7 +9,6 @@ interface IncomingCallPopupProps {
 }
 
 const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
-  callerId,
   callerName,
   callerAvatar,
   onAcceptCall,
@@ -31,8 +29,6 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
 
     return () => clearInterval(ringInterval);
   }, []);
-
-  console.log("IncomingCallPopup", callerName, callerAvatar, callerId);
 
   return (
     <div
