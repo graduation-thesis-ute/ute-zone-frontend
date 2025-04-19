@@ -661,26 +661,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleScroll = async () => {
-    if (
-      scrollContainerRef.current &&
-      scrollContainerRef.current.scrollTop === 0 &&
-      !isLoadingMessages &&
-      hasMore
-    ) {
-      const firstMessage = scrollContainerRef.current.firstElementChild;
-      const previousScrollTop = scrollContainerRef.current.scrollTop;
-      const previousOffsetTop = firstMessage
-        ? (firstMessage as HTMLElement).offsetTop
-        : 0;
-
-      await fetchMessages(page + 1);
-
-      if (firstMessage) {
-        scrollContainerRef.current.scrollTop =
-          (firstMessage as HTMLElement).offsetTop -
-          previousOffsetTop +
-          previousScrollTop;
-      }
+    if (hasMore && !isLoadingMessages) {
+      fetchMessages(page + 1);
     }
   };
 
@@ -763,7 +745,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setEditingMessageId(null);
         setEditedMessage("");
         setEditedImageUrl("");
-        toast.success("Message updated successfully!");
       }
     } catch (error) {
       console.error("Error updating message:", error);
