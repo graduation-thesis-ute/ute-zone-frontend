@@ -24,6 +24,7 @@ import { useProfile } from "../types/UserContext";
 import VideoCallModal from "../components/chat/VideoCallModal";
 import { encrypt } from "../types/utils";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
+import ringtone from "/receiver-ringtone.mp3";
 
 export interface CallData {
   callerId: string;
@@ -53,6 +54,7 @@ const Home = () => {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [isComingCall, setIsComingCall] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -155,6 +157,28 @@ const Home = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    audioRef.current = new Audio(ringtone);
+    audioRef.current.loop = true; // Lặp lại âm thanh chuông
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isComingCall && audioRef.current) {
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing ringtone:", error);
+      });
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // Reset thời gian phát
+    }
+  }, [isComingCall]);
 
   const handleMessageChange = useCallback(() => {
     if (selectedSection === "messages" && userCurrent) {
@@ -286,6 +310,10 @@ const Home = () => {
 
       setIsVideoCallActive(true);
       setIsComingCall(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     } catch (error) {
       console.error("Error accepting call:", error);
       alert("Không thể truy cập camera hoặc micro.");
@@ -315,6 +343,10 @@ const Home = () => {
       });
       setIsComingCall(false);
       setIsInfoComingCall(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     }
   };
 
@@ -353,6 +385,10 @@ const Home = () => {
     setRemoteStream(null);
     setIsVideoCallActive(false);
     peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     console.log("Call ended by caller HOME.");
   };
 
