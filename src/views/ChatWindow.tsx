@@ -29,6 +29,7 @@ import EditProfilePopup from "../components/chat/EditProfilePopup";
 import UserInfoPopup from "../components/chat/UserInfoPopup";
 import VideoCallModal from "../components/chat/VideoCallModal";
 import CallingPopup from "../components/chat/CallingPopup";
+import ringtone from "/caller-ringtone.mp3";
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   conversation,
@@ -94,6 +95,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const initializePeerConnection = (receiverId: string) => {
     const pc = new RTCPeerConnection({
@@ -396,6 +398,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     },
   });
 
+  // Khởi tạo audio element khi component mount
+  useEffect(() => {
+    audioRef.current = new Audio(ringtone);
+    audioRef.current.loop = true; // Lặp lại âm thanh chuông
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Phát âm thanh chuông khi đang gọi
+  useEffect(() => {
+    if (isCalling && audioRef.current) {
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing ringtone:", error);
+      });
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // Reset thời gian phát
+    }
+  }, [isCalling]);
+
   const startCall = async () => {
     try {
       const receiverId = membersList.find(
@@ -501,6 +527,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     //   message: "Cuộc gọi video đã kết thúc",
     // });
     peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     console.log("Call ended while calling by caller ChatWindow");
   };
 
@@ -523,6 +553,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     //   message: "Cuộc gọi video đã kết thúc",
     // });
     peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     console.log("Call ended while calling by receiver ChatWindow");
   };
 

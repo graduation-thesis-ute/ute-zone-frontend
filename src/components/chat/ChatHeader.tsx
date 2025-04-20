@@ -108,13 +108,15 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         {/* Action buttons */}
         <div className="flex items-center space-x-1">
           {/* Video Call */}
-          <button
-            onClick={onStartVideoCall}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
-            title="Gọi video"
-          >
-            <Video size={20} />
-          </button>
+          {conversation.kind !== 1 && (
+            <button
+              onClick={onStartVideoCall}
+              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              title="Gọi video"
+            >
+              <Video size={20} />
+            </button>
+          )}
 
           {/* Add Member - only for groups */}
           {isGroup && (
