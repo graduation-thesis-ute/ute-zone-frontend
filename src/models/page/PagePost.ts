@@ -6,10 +6,13 @@ export interface PagePost {
   totalReactions: number;
   totalComments: number;
   totalShares: number;
+  isLiked?: boolean;
   page: {
     _id: string;
     name: string;
     avatarUrl: string | null;
+    kind: string;
+    category: string;
   };
   user: {
     _id: string;

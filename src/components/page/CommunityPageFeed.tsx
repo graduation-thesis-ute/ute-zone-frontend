@@ -1,22 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, Search, Filter } from 'lucide-react';
+import { Loader2, Search, Filter, ThumbsUp, MessageCircle, Share2, Bookmark } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
-
-interface PagePost {
-  _id: string;
-  content: string;
-  images?: string[];
-  createdAt: string;
-  page: {
-    _id: string;
-    name: string;
-    avatarUrl?: string;
-    category: string;
-  };
-  totalLikes: number;
-  totalComments: number;
-}
+import PostDetailDialog from './PostDetailDialog';
+import { PagePost } from '../../models/page/PagePost';
+import { toast } from 'react-toastify';
 
 const CommunityPageFeed: React.FC = () => {
   const [posts, setPosts] = useState<PagePost[]>([]);
@@ -29,9 +17,11 @@ const CommunityPageFeed: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const { profile } = useProfile();
-  const { get } = useFetch();
+  const { get, post } = useFetch();
   const observer = useRef<IntersectionObserver | null>(null);
   const lastPostRef = useRef<HTMLDivElement>(null);
+  const [selectedPost, setSelectedPost] = useState<PagePost | null>(null);
+  const [followedPages, setFollowedPages] = useState<string[]>([]);
 
   const fetchCommunityPosts = useCallback(async (pageNum: number) => {
     try {
@@ -69,15 +59,7 @@ const CommunityPageFeed: React.FC = () => {
         });
 
         if (postsResponse.data && postsResponse.data.content) {
-          return postsResponse.data.content.map((post: any) => ({
-            ...post,
-            page: {
-              _id: page._id,
-              name: page.name,
-              avatarUrl: page.avatarUrl,
-              category: page.category
-            }
-          }));
+          return postsResponse.data.content;
         }
         return [];
       });
@@ -145,11 +127,66 @@ const CommunityPageFeed: React.FC = () => {
     }
 
     if (filterCategory) {
-      result = result.filter(post => post.page.category === filterCategory);
+      result = result.filter(post => post.page.kind === filterCategory);
     }
 
     setFilteredPosts(result);
   }, [searchTerm, filterCategory, posts]);
+
+  const handlePostClick = (post: PagePost) => {
+    setSelectedPost(post);
+  };
+
+  // Update fetchFollowedPages to correctly map the response
+  const fetchFollowedPages = useCallback(async () => {
+    try {
+      const response = await get('/v1/page-follower/listPageFollowers', {
+        user: profile?._id
+      });
+      if (response.data && response.data.content) {
+        // Map the response to get page IDs
+        const pageIds = response.data.content.map((follower: any) => follower.page._id);
+        setFollowedPages(pageIds);
+      }
+    } catch (err) {
+      console.error('Failed to fetch followed pages:', err);
+    }
+  }, [get, profile?._id]);
+
+  // Update handleFollow function
+  const handleFollow = async (pageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await post('/v1/page-follower/follow', { pageId: pageId });
+      if (response.result) {
+        setFollowedPages(prev => [...prev, pageId]);
+        toast.success('Đã theo dõi trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi theo dõi trang');
+    }
+  };
+
+  // Update handleUnfollow function
+  const handleUnfollow = async (pageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await post('/v1/page-follower/follow', { pageId: pageId });
+      if (response.result) {
+        setFollowedPages(prev => prev.filter(id => id !== pageId));
+        toast.success('Đã hủy theo dõi trang');
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi hủy theo dõi trang');
+    }
+  };
+
+  // Call fetchFollowedPages when component mounts
+  useEffect(() => {
+    if (profile?._id) {
+      fetchFollowedPages();
+    }
+  }, [profile?._id, fetchFollowedPages]);
 
   if (isLoading) {
     return (
@@ -270,7 +307,8 @@ const CommunityPageFeed: React.FC = () => {
             <div 
               key={post._id} 
               ref={index === filteredPosts.length - 1 ? lastPostRef : undefined}
-              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300"
+              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer"
+              onClick={() => handlePostClick(post)}
             >
               {/* Page Info Header */}
               <div className="p-4 border-b border-gray-100">
@@ -296,6 +334,21 @@ const CommunityPageFeed: React.FC = () => {
                       <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                         {post.page.category}
                       </span>
+                      {followedPages.includes(post.page._id) ? (
+                        <button
+                          onClick={(e) => handleUnfollow(post.page._id, e)}
+                          className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full hover:bg-red-100"
+                        >
+                          Hủy theo dõi
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleFollow(post.page._id, e)}
+                          className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100"
+                        >
+                          Theo dõi
+                        </button>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500">
                       {new Date(post.createdAt).toLocaleDateString('vi-VN', {
@@ -313,49 +366,113 @@ const CommunityPageFeed: React.FC = () => {
               {/* Post Content */}
               <div className="p-4">
                 <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-                {post.images && post.images.length > 0 && (
+                {post.imageUrls && post.imageUrls.length > 0 && (
                   <div className={`mt-4 grid gap-2 ${
-                    post.images.length === 1 ? 'grid-cols-1' : 
-                    post.images.length === 2 ? 'grid-cols-2' : 
-                    'grid-cols-3'
+                    post.imageUrls.length === 1 ? 'grid-cols-1' : 
+                    post.imageUrls.length === 2 ? 'grid-cols-2' :
+                    post.imageUrls.length === 3 ? 'grid-cols-2' :
+                    'grid-cols-2'
                   }`}>
-                    {post.images.map((image, index) => (
-                      <div 
-                        key={index}
-                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
-                      >
-                        <img
-                          src={image}
-                          alt={`Post image ${index + 1}`}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    ))}
+                    {post.imageUrls.length === 1 ? (
+                      <img
+                        src={post.imageUrls[0]}
+                        alt="Post image"
+                        className="w-full rounded-lg object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                        style={{ maxHeight: '500px' }}
+                      />
+                    ) : post.imageUrls.length === 2 ? (
+                      post.imageUrls.map((url, index) => (
+                        <div key={index} className="aspect-square">
+                          <img
+                            src={url}
+                            alt={`Post image ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                          />
+                        </div>
+                      ))
+                    ) : post.imageUrls.length === 3 ? (
+                      <>
+                        <div className="row-span-2">
+                          <img
+                            src={post.imageUrls[0]}
+                            alt="Post image 1"
+                            className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                            style={{ height: '340px' }}
+                          />
+                        </div>
+                        {post.imageUrls.slice(1, 3).map((url, index) => (
+                          <div key={index}>
+                            <img
+                              src={url}
+                              alt={`Post image ${index + 2}`}
+                              className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                              style={{ height: '169px' }}
+                            />
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      post.imageUrls.slice(0, 4).map((url, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <img
+                            src={url}
+                            alt={`Post image ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity"
+                          />
+                          {index === 3 && post.imageUrls!.length > 4 && (
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white rounded-lg">
+                              <span className="text-xl font-semibold">+{post.imageUrls!.length - 4}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
 
+              {/* Reactions & Comments Count */}
+              <div className="px-4 py-2 border-t border-gray-100">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center space-x-1">
+                    {post.totalReactions > 0 && (
+                      <>
+                        <div className="flex items-center space-x-1">
+                          <div className="bg-blue-500 rounded-full p-1">
+                            <ThumbsUp size={10} className="text-white" />
+                          </div>
+                          <span>{post.totalReactions}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex space-x-3">
+                    <span>{post.totalComments || 0} bình luận</span>
+                    <span>{post.totalShares || 0} lượt chia sẻ</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Post Actions */}
               <div className="px-4 py-3 border-t border-gray-100">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
-                    <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      <span>{post.totalLikes}</span>
-                    </button>
-                    <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <span>{post.totalComments}</span>
-                    </button>
-                  </div>
-                  <button className="text-gray-500 hover:text-blue-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
+                <div className="flex items-center justify-between">
+                  <button 
+                    className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
+                      post.isLiked ? 'text-blue-500' : 'text-gray-500'
+                    }`}
+                  >
+                    <ThumbsUp size={20} />
+                    <span className="font-medium">Thích</span>
+                  </button>
+                  
+                  <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                    <MessageCircle size={20} />
+                    <span className="font-medium">Bình luận</span>
+                  </button>
+                  
+                  <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                    <Share2 size={20} />
+                    <span className="font-medium">Chia sẻ</span>
                   </button>
                 </div>
               </div>
@@ -381,8 +498,18 @@ const CommunityPageFeed: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Post Detail Dialog */}
+      {selectedPost && (
+        <PostDetailDialog
+          isOpen={!!selectedPost}
+          onClose={() => setSelectedPost(null)}
+          post={selectedPost}
+          onPostUpdated={() => fetchCommunityPosts(currentPage)}
+        />
+      )}
     </div>
   );
 };
 
-export default CommunityPageFeed; 
+export default CommunityPageFeed;

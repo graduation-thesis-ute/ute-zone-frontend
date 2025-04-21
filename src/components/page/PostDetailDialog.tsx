@@ -12,7 +12,13 @@ import {
   ThumbsUp, 
   MessageCircle, 
   Share2, 
-  MoreHorizontal 
+  MoreHorizontal,
+  Heart,
+  Laugh,
+  AlertCircle,
+  Frown,
+  Angry,
+  Smile
 } from 'lucide-react';
 import { uploadImage2 } from '../../types/utils';
 
@@ -63,6 +69,22 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const { get, post: postComment } = useFetch();
   const [totalPages, setTotalPages] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [showReactions, setShowReactions] = useState(false);
+  const [currentReaction, setCurrentReaction] = useState<number | null>(null);
+  const [hoveredReaction, setHoveredReaction] = useState<number | null>(null);
+  const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reactionButtonRef = useRef<HTMLDivElement>(null);
+  const reactionMenuRef = useRef<HTMLDivElement>(null);
+
+  const reactionTypes = [
+    { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
+    { type: 2, icon: Heart, label: 'Yêu thích', color: 'text-red-500' },
+    { type: 3, icon: Laugh, label: 'Haha', color: 'text-yellow-500' },
+    { type: 4, icon: AlertCircle, label: 'Wow', color: 'text-purple-500' },
+    { type: 5, icon: Frown, label: 'Buồn', color: 'text-gray-500' },
+    { type: 6, icon: Angry, label: 'Phẫn nộ', color: 'text-orange-500' },
+    { type: 7, icon: Smile, label: 'Thương thương', color: 'text-pink-500' }
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -70,6 +92,71 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       checkIfLiked();
     }
   }, [isOpen, currentPage]);
+
+  // Clean up any pending timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      if (reactionTimeoutRef.current) {
+        clearTimeout(reactionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle clicks outside of reaction menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showReactions &&
+        reactionMenuRef.current &&
+        reactionButtonRef.current &&
+        !reactionMenuRef.current.contains(event.target as Node) &&
+        !reactionButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowReactions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReactions]);
+
+  const handleShowReactions = () => {
+    // Clear any pending timeout that would hide reactions
+    if (reactionTimeoutRef.current) {
+      clearTimeout(reactionTimeoutRef.current);
+      reactionTimeoutRef.current = null;
+    }
+    setShowReactions(true);
+  };
+
+  const handleHideReactions = () => {
+    // Set a timeout to hide reactions after a delay
+    // This gives the user time to move their mouse to the reaction menu
+    reactionTimeoutRef.current = setTimeout(() => {
+      if (!hoveredReaction) {
+        setShowReactions(false);
+      }
+    }, 300); // Delay in milliseconds
+  };
+
+  const handleReactionMenuEnter = () => {
+    // Clear any pending timeout that would hide reactions
+    if (reactionTimeoutRef.current) {
+      clearTimeout(reactionTimeoutRef.current);
+      reactionTimeoutRef.current = null;
+    }
+  };
+
+  const handleReactionMenuLeave = () => {
+    // Hide reactions after a short delay when leaving the menu
+    // This avoids the menu disappearing immediately if user accidentally moves out
+    reactionTimeoutRef.current = setTimeout(() => {
+      setShowReactions(false);
+      setHoveredReaction(null);
+    }, 300);
+  };
 
   const fetchComments = async () => {
     try {
@@ -102,8 +189,14 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       });
       
       const reactions = response.data.content;
-      const hasLiked = reactions.some((reaction: any) => reaction.user._id === profile?._id);
-      setLiked(hasLiked);
+      const userReaction = reactions.find((reaction: any) => reaction.user._id === profile?._id);
+      if (userReaction) {
+        setLiked(true);
+        setCurrentReaction(userReaction.reactionType);
+      } else {
+        setLiked(false);
+        setCurrentReaction(null);
+      }
     } catch (error) {
       console.error('Error checking like status:', error);
     } finally {
@@ -168,25 +261,29 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     }
   };
 
-  const handleToggleLike = async () => {
+  const handleToggleLike = async (reactionType?: number) => {
     try {
-      if (liked) {
-        // Remove like
+      // Nếu đã reaction và click vào reaction hiện tại -> xóa reaction
+      if (liked && currentReaction === reactionType) {
         const response = await postComment(`/v1/page-post-reaction/delete/${post._id}`);
         if (response.result) {
           setLiked(false);
+          setCurrentReaction(null);
           if (onPostUpdated) {
             onPostUpdated();
           }
         }
-      } else {
-        // Add like
+        return; // Thêm return để ngăn không thực hiện thêm reaction
+      } 
+      // Nếu chưa reaction hoặc chọn reaction khác -> thêm reaction mới
+      else {
         const response = await postComment(`/v1/page-post-reaction/create`, {
           pagePost: post._id,
-          reactionType: 1
+          reactionType: reactionType || 1
         });
         if (response.result) {
           setLiked(true);
+          setCurrentReaction(reactionType || 1);
           if (onPostUpdated) {
             onPostUpdated();
           }
@@ -424,10 +521,12 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
               <div className="flex items-center space-x-1">
                 {post.totalReactions > 0 && (
                   <>
-                    <div className="bg-blue-500 rounded-full p-1">
-                      <ThumbsUp size={10} className="text-white" />
+                    <div className="flex items-center space-x-1">
+                      <div className="bg-blue-500 rounded-full p-1">
+                        <ThumbsUp size={10} className="text-white" />
+                      </div>
+                      <span>{post.totalReactions}</span>
                     </div>
-                    <span>{post.totalReactions}</span>
                   </>
                 )}
               </div>
@@ -439,17 +538,83 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             
             {/* Action buttons */}
             <div className="flex justify-between py-1">
-              <button 
-                className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${liked ? 'text-blue-500' : 'text-gray-500'}`}
-                onClick={handleToggleLike}
+              {/* Like button with reaction menu */}
+              <div 
+                ref={reactionButtonRef}
+                className="relative flex-1"
               >
-                <ThumbsUp size={18} />
-                <span className="text-sm font-medium">Thích</span>
-              </button>
+                <button 
+                  className={`flex items-center justify-center space-x-2 py-2 w-full rounded-md hover:bg-gray-100 ${
+                    liked ? (currentReaction ? reactionTypes.find(r => r.type === currentReaction)?.color : 'text-blue-500') : 'text-gray-500'
+                  }`}
+                  onMouseEnter={handleShowReactions}
+                  onMouseLeave={handleHideReactions}
+                  onClick={() => {
+                    if (showReactions) {
+                      setShowReactions(false);
+                    } else {
+                      handleToggleLike(1); // Default to "like" when clicking the button directly
+                    }
+                  }}
+                >
+                  {currentReaction ? (
+                    React.createElement(reactionTypes.find(r => r.type === currentReaction)?.icon || ThumbsUp, { size: 18 })
+                  ) : (
+                    <ThumbsUp size={18} />
+                  )}
+                  <span className="text-sm font-medium">
+                    {currentReaction ? 
+                      reactionTypes.find(r => r.type === currentReaction)?.label || 'Thích' : 
+                      'Thích'
+                    }
+                  </span>
+                </button>
+                
+                {/* Reaction menu that shows on hover */}
+                {showReactions && (
+                  <div 
+                    ref={reactionMenuRef}
+                    className="absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg p-2 flex space-x-1 z-10"
+                    onMouseEnter={handleReactionMenuEnter}
+                    onMouseLeave={handleReactionMenuLeave}
+                    style={{ transform: 'translateY(-8px)' }}
+                  >
+                    {reactionTypes.map((reaction) => (
+                      <div 
+                        key={reaction.type}
+                        className="relative group"
+                        onMouseEnter={() => setHoveredReaction(reaction.type)}
+                        onMouseLeave={() => setHoveredReaction(null)}
+                      >
+                        <button
+                          className={`p-2 rounded-full hover:bg-gray-100 transform transition-all duration-150 ${
+                            hoveredReaction === reaction.type ? 'scale-125' : ''
+                          } ${reaction.color}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLike(reaction.type);
+                          }}
+                        >
+                          {React.createElement(reaction.icon, { size: 24 })}
+                        </button>
+                        
+                        {/* Label tooltip */}
+                        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black bg-opacity-80 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>
+                          {reaction.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Comment button */}
               <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
                 <MessageCircle size={18} />
                 <span className="text-sm font-medium">Bình luận</span>
               </button>
+              
+              {/* Share button */}
               <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
                 <Share2 size={18} />
                 <span className="text-sm font-medium">Chia sẻ</span>
@@ -491,12 +656,12 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                       <span className="text-xs text-gray-400">đã chỉnh sửa</span>
                     )}
                   </div>
-                  {comment.totalChildren && comment.totalChildren > 0 && (
+                  {/* {comment.totalChildren && comment.totalChildren > 0 && (
                     <button className="text-xs text-blue-500 ml-2 mt-1 flex items-center space-x-1">
                       <div className="w-5 h-0.5 bg-gray-300"></div>
                       <span>{comment.totalChildren} phản hồi</span>
                     </button>
-                  )}
+                  )} */}
                 </div>
               </div>
             ))}
@@ -512,9 +677,9 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
           <form onSubmit={handleSubmitComment} className="p-3 border-t bg-white">
             <div className="flex items-center space-x-2">
               <img
-                src="/default-avatar.png" // Replace with current user avatar
+                src={profile?.avatarUrl || "/default-avatar.png"}
                 alt="Your avatar"
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full object-cover"
               />
               <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-2">
                 <input
