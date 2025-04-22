@@ -25,6 +25,7 @@ import VideoCallModal from "../components/chat/VideoCallModal";
 import { encrypt } from "../types/utils";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import ringtone from "/receiver-ringtone.mp3";
+import { toast } from "react-toastify";
 
 export interface CallData {
   callerId: string;
@@ -316,7 +317,7 @@ const Home = () => {
       }
     } catch (error) {
       console.error("Error accepting call:", error);
-      alert("Không thể truy cập camera hoặc micro.");
+      toast.error("Không thể truy cập camera hoặc micro.");
     }
   };
 

@@ -461,7 +461,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       });
     } catch (error) {
       console.error("Error starting call:", error);
-      alert("Không thể truy cập camera hoặc micro.");
+      toast.error("Không thể truy cập camera hoặc micro.");
     }
   };
 
