@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, Search, Filter, ThumbsUp, MessageCircle, Share2, Bookmark } from 'lucide-react';
+import { Loader2, Search, Filter, ThumbsUp, MessageCircle, Share2, Bookmark, Copy, Check } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
 import PostDetailDialog from './PostDetailDialog';
@@ -22,6 +22,7 @@ const CommunityPageFeed: React.FC = () => {
   const lastPostRef = useRef<HTMLDivElement>(null);
   const [selectedPost, setSelectedPost] = useState<PagePost | null>(null);
   const [followedPages, setFollowedPages] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const fetchCommunityPosts = useCallback(async (pageNum: number) => {
     try {
@@ -187,6 +188,27 @@ const CommunityPageFeed: React.FC = () => {
       fetchFollowedPages();
     }
   }, [profile?._id, fetchFollowedPages]);
+
+  // Add handleShare function
+  const handleShare = async (post: PagePost, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Create share URL
+      const shareUrl = `${window.location.origin}/pages/${post.page._id}/posts/${post._id}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast.success('Đã sao chép liên kết chia sẻ');
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi chia sẻ bài đăng');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -470,8 +492,11 @@ const CommunityPageFeed: React.FC = () => {
                     <span className="font-medium">Bình luận</span>
                   </button>
                   
-                  <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
-                    <Share2 size={20} />
+                  <button 
+                    onClick={(e) => handleShare(post, e)}
+                    className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500"
+                  >
+                    {copied ? <Check size={20} className="text-green-500" /> : <Share2 size={20} />}
                     <span className="font-medium">Chia sẻ</span>
                   </button>
                 </div>

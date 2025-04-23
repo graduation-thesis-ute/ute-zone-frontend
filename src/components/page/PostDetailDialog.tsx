@@ -627,8 +627,8 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"
             onScroll={handleScroll}
           >
-            {comments.map(comment => (
-              <div key={comment._id} className="flex space-x-2">
+            {comments.map((comment, index) => (
+              <div key={`${comment._id}-${index}`} className="flex space-x-2">
                 <img
                   src={comment.user.avatarUrl || '/default-avatar.png'}
                   alt={comment.user.displayName}
@@ -656,12 +656,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                       <span className="text-xs text-gray-400">đã chỉnh sửa</span>
                     )}
                   </div>
-                  {/* {comment.totalChildren && comment.totalChildren > 0 && (
-                    <button className="text-xs text-blue-500 ml-2 mt-1 flex items-center space-x-1">
-                      <div className="w-5 h-0.5 bg-gray-300"></div>
-                      <span>{comment.totalChildren} phản hồi</span>
-                    </button>
-                  )} */}
                 </div>
               </div>
             ))}
