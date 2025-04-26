@@ -88,19 +88,13 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setComments([]);
+      setCurrentPage(0);
+      setTotalPages(0);
       fetchComments();
       checkIfLiked();
     }
-  }, [isOpen, currentPage]);
-
-  // Clean up any pending timeouts when component unmounts
-  useEffect(() => {
-    return () => {
-      if (reactionTimeoutRef.current) {
-        clearTimeout(reactionTimeoutRef.current);
-      }
-    };
-  }, []);
+  }, [isOpen]);
 
   // Handle clicks outside of reaction menu to close it
   useEffect(() => {
@@ -170,7 +164,11 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       });
       
       const newComments = response.data.content;
-      setComments(prev => [...prev, ...newComments]);
+      if (currentPage === 0) {
+        setComments(newComments);
+      } else {
+        setComments(prev => [...prev, ...newComments]);
+      }
       setHasMore(currentPage < response.data.totalPages - 1);
       setTotalPages(response.data.totalPages);
     } catch (error) {
