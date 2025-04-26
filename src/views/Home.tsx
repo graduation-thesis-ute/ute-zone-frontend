@@ -8,7 +8,6 @@ import useFetch from "../hooks/useFetch";
 import { Conversation, UserProfile } from "../models/profile/chat";
 import FriendListItem from "../components/friend/FriendListItem";
 import FriendsList from "../components/friend/FriendsList";
-import GroupList from "../components/friend/GroupList";
 import FriendRequests from "../components/friend/FriendRequests";
 import PostListItem from "../components/post/pages/PostListItem";
 import MyPosts from "../components/post/pages/MyPosts";
@@ -21,12 +20,15 @@ import { Menu, X, Bookmark, Users, Globe } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
 import { useProfile } from "../types/UserContext";
+import GroupListItem from '../components/group/GroupListItem';
+import Group from './Group';
 
 const Home = () => {
   const [selectedSection, setSelectedSection] = useState("messages");
   const [selectedFriendSection, setSelectedFriendSection] = useState("friends");
   const [selectedPostSection, setSelectedPostSection] = useState("posts");
-  const [selectedPageType, setSelectedPageType] = useState("my-pages"); // Add state for page type
+  const [selectedPageType, setSelectedPageType] = useState("my-pages");
+  const [selectedGroupType, setSelectedGroupType] = useState("my-groups");
   const [userCurrent, setUserCurrent] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
@@ -251,6 +253,34 @@ const Home = () => {
               </button>
             </div>
           </div>
+        ) : selectedSection === "groups" ? (
+          <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Groups</h2>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setSelectedGroupType("my-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "my-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Nhóm của tôi</span>
+              </button>
+              <button
+                onClick={() => setSelectedGroupType("community-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "community-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Globe size={20} />
+                <span>Nhóm cộng đồng</span>
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -286,9 +316,8 @@ const Home = () => {
         ) : selectedSection === "friends" ? (
           selectedFriendSection === "friends" ? (
             <FriendsList />
-          ) : selectedFriendSection === "groups" ? (
-            <GroupList />
-          ) : selectedFriendSection === "requests" ? (
+          ) 
+           : selectedFriendSection === "requests" ? (
             <FriendRequests />
           ) : (
             <FriendsList />
@@ -318,6 +347,10 @@ const Home = () => {
         ) : selectedSection === "pages" ? (
           <div className="h-full">
             <Page pageId={selectedPageType} setSelectedPageType={setSelectedPageType} />
+          </div>
+        ) : selectedSection === "groups" ? (
+          <div className="h-full">
+            <Group groupId={selectedGroupType} setSelectedGroupType={setSelectedGroupType} />
           </div>
         ) : null}
       </div>
