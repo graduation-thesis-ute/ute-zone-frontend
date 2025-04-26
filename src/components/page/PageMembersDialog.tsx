@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Search, UserPlus, UserMinus, Crown, Shield, Edit3 } from 'lucide-react';
+import { X, Loader2, Search, UserPlus, UserMinus, Crown, Shield, Edit3, Settings, Check } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { toast } from 'react-toastify';
 
@@ -59,7 +59,9 @@ const PageMembersDialog: React.FC<PageMembersDialogProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<number>(3); // Mặc định là editor
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const { get, post, del } = useFetch();
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<number>(3);
+  const { get, post, del, put } = useFetch();
 
   const fetchData = async () => {
     try {
@@ -115,6 +117,22 @@ const PageMembersDialog: React.FC<PageMembersDialogProps> = ({
       }
     } catch (error) {
       toast.error('Có lỗi xảy ra khi xóa thành viên');
+    }
+  };
+
+  const handleUpdateRole = async (pageMemberId: string) => {
+    try {
+      const response = await put(`/v1/page-member/${pageMemberId}`, {
+        role: editingRole
+      });
+
+      if (response.result) {
+        toast.success('Đã cập nhật quyền thành công');
+        setEditingMemberId(null);
+        fetchData();
+      }
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi cập nhật quyền');
     }
   };
 
@@ -262,15 +280,58 @@ const PageMembersDialog: React.FC<PageMembersDialogProps> = ({
                           <p className="text-xs text-gray-400">{getRoleName(member.role)}</p>
                         </div>
                       </div>
-                      {member.role !== 1 && ( // Không cho phép xóa chủ sở hữu
-                        <button
-                          onClick={() => handleRemoveMember(member._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                          title="Xóa thành viên"
-                        >
-                          <UserMinus size={20} />
-                        </button>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {member.role !== 1 && ( // Không cho phép chỉnh sửa chủ sở hữu
+                          <>
+                            {editingMemberId === member._id ? (
+                              <div className="flex items-center space-x-2">
+                                <select
+                                  value={editingRole}
+                                  onChange={(e) => setEditingRole(Number(e.target.value))}
+                                  className="text-sm border border-gray-300 rounded-lg px-2 py-1"
+                                >
+                                  <option value={2}>Quản trị viên</option>
+                                  <option value={3}>Biên tập viên</option>
+                                </select>
+                                <button
+                                  onClick={() => handleUpdateRole(member._id)}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
+                                  title="Xác nhận"
+                                >
+                                  <Check size={20} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingMemberId(null)}
+                                  className="p-2 text-gray-600 hover:bg-gray-50 rounded-full"
+                                  title="Hủy"
+                                >
+                                  <X size={20} />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingMemberId(member._id);
+                                    setEditingRole(member.role);
+                                  }}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
+                                  title="Cập nhật quyền"
+                                >
+                                  <Settings size={20} />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveMember(member._id)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                                  title="Xóa thành viên"
+                                >
+                                  <UserMinus size={20} />
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {filteredMembers.length === 0 && (
