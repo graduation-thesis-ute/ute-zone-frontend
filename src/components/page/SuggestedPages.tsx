@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Bookmark, TrendingUp, Loader2 } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
+import PageProfileDialog from './PageProfileDialog';
 
 interface SuggestedPage {
   _id: string;
@@ -23,6 +24,7 @@ const SuggestedPages: React.FC = () => {
   const { get, post } = useFetch();
   const observer = useRef<IntersectionObserver | null>(null);
   const lastPageRef = useRef<HTMLDivElement>(null);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
   const fetchSuggestedPages = useCallback(async (pageNum: number) => {
     try {
@@ -107,7 +109,8 @@ const SuggestedPages: React.FC = () => {
     };
   }, [currentPage, totalPages, isLoadingMore, fetchSuggestedPages]);
 
-  const handleFollow = async (pageId: string) => {
+  const handleFollow = async (pageId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
       await post('/v1/page-follower/follow', { pageId });
       // Refresh suggested pages after following
@@ -189,8 +192,11 @@ const SuggestedPages: React.FC = () => {
                 )}
               </div>
 
-              {/* Page Info */}
-              <div className="flex-1 min-w-0">
+              {/* Page Info - clickable */}
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => setSelectedPageId(page._id)}
+              >
                 <h3 className="font-medium truncate">{page.name}</h3>
                 <p className="text-sm text-gray-600 line-clamp-2">{page.description}</p>
                 <div className="flex items-center space-x-2 mt-1">
@@ -206,7 +212,7 @@ const SuggestedPages: React.FC = () => {
 
               {/* Follow Button */}
               <button
-                onClick={() => handleFollow(page._id)}
+                onClick={(e) => handleFollow(page._id, e)}
                 className="flex-shrink-0 text-gray-500 hover:text-blue-600 transition-colors"
               >
                 <Bookmark size={20} />
@@ -236,6 +242,13 @@ const SuggestedPages: React.FC = () => {
           <p className="text-gray-500 text-sm">Không có trang gợi ý</p>
         </div>
       )}
+
+      {/* Page Profile Dialog Popup */}
+      <PageProfileDialog
+        isOpen={!!selectedPageId}
+        onClose={() => setSelectedPageId(null)}
+        pageId={selectedPageId || ''}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Bookmark, Loader2, Search, Filter } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
+import PageProfileDialog from './PageProfileDialog';
 
 interface FollowedPage {
   _id: string;
@@ -21,6 +22,7 @@ const FollowedPageDetail: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const { profile } = useProfile();
   const { get, post } = useFetch();
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
   const fetchFollowedPages = async () => {
     try {
@@ -94,7 +96,8 @@ const FollowedPageDetail: React.FC = () => {
     setFilteredPages(result);
   }, [searchTerm, filterCategory, followedPages]);
 
-  const handleUnfollow = async (pageId: string) => {
+  const handleUnfollow = async (pageId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
       await post('/v1/page-follower/follow', { pageId });
       // Refresh followed pages after unfollowing
@@ -249,8 +252,11 @@ const FollowedPageDetail: React.FC = () => {
                   )}
                 </div>
 
-                {/* Page Info */}
-                <div className="flex-1 min-w-0">
+                {/* Page Info - clickable */}
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => setSelectedPageId(page._id)}
+                >
                   <h3 className="font-medium truncate">{page.name}</h3>
                   <p className="text-sm text-gray-600 line-clamp-2">{page.description}</p>
                   <div className="flex items-center space-x-2 mt-1">
@@ -266,7 +272,7 @@ const FollowedPageDetail: React.FC = () => {
 
                 {/* Unfollow Button */}
                 <button
-                  onClick={() => handleUnfollow(page._id)}
+                  onClick={(e) => handleUnfollow(page._id, e)}
                   className="flex-shrink-0 text-red-500 hover:text-red-600 transition-colors"
                 >
                   <Bookmark size={20} className="fill-current" />
@@ -275,6 +281,13 @@ const FollowedPageDetail: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Page Profile Dialog Popup */}
+        <PageProfileDialog
+          isOpen={!!selectedPageId}
+          onClose={() => setSelectedPageId(null)}
+          pageId={selectedPageId || ''}
+        />
       </div>
     </div>
   );

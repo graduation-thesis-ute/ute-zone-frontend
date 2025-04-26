@@ -5,6 +5,7 @@ import useFetch from '../../hooks/useFetch';
 import PostDetailDialog from './PostDetailDialog';
 import { PagePost } from '../../models/page/PagePost';
 import { toast } from 'react-toastify';
+import PageProfileDialog from './PageProfileDialog';
 
 const CommunityPageFeed: React.FC = () => {
   const [posts, setPosts] = useState<PagePost[]>([]);
@@ -23,6 +24,7 @@ const CommunityPageFeed: React.FC = () => {
   const [selectedPost, setSelectedPost] = useState<PagePost | null>(null);
   const [followedPages, setFollowedPages] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
   const fetchCommunityPosts = useCallback(async (pageNum: number) => {
     try {
@@ -335,7 +337,10 @@ const CommunityPageFeed: React.FC = () => {
               {/* Page Info Header */}
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm"
+                    style={{ cursor: 'pointer' }}
+                    onClick={e => { e.stopPropagation(); setSelectedPageId(post.page._id); }}
+                  >
                     {post.page.avatarUrl ? (
                       <img
                         src={post.page.avatarUrl}
@@ -352,7 +357,12 @@ const CommunityPageFeed: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900 truncate">{post.page.name}</h3>
+                      <h3
+                        className="font-semibold text-gray-900 truncate cursor-pointer"
+                        onClick={e => { e.stopPropagation(); setSelectedPageId(post.page._id); }}
+                      >
+                        {post.page.name}
+                      </h3>
                       <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                         {post.page.category}
                       </span>
@@ -533,6 +543,12 @@ const CommunityPageFeed: React.FC = () => {
           onPostUpdated={() => fetchCommunityPosts(currentPage)}
         />
       )}
+      {/* Page Profile Dialog Popup */}
+      <PageProfileDialog
+        isOpen={!!selectedPageId}
+        onClose={() => setSelectedPageId(null)}
+        pageId={selectedPageId || ''}
+      />
     </div>
   );
 };
