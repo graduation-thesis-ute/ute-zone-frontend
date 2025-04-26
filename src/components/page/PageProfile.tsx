@@ -12,6 +12,7 @@ import { useProfile } from '../../types/UserContext';
 import { toast } from 'react-toastify';
 import UpdatePageDialog from './UpdatePageDialog';
 import PageMembers from './PageMembers';
+import PageMembersDialog from './PageMembersDialog';
 
 interface PageProfileProps {
   pageId: string;
@@ -44,6 +45,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [totalFollowersPages, setTotalFollowersPages] = useState(0);
   const lastFollowerRef = useRef<HTMLDivElement>(null);
   const followersObserver = useRef<IntersectionObserver | null>(null);
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
 
   const fetchPageDetails = async () => {
     try {
@@ -224,8 +226,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     setIsUpdatePageOpen(false);
   };
 
-  const handleAddMember = () => {
-    window.location.href = `/pages/${pageId}/members`;
+  const handleAddMember = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsMembersDialogOpen(true);
+    setIsSettingsOpen(false);
   };
 
   const handleToggleStatus = async () => {
@@ -583,6 +588,13 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
           page={page}
         />
       )}
+
+      {/* Members Dialog */}
+      <PageMembersDialog
+        isOpen={isMembersDialogOpen}
+        onClose={() => setIsMembersDialogOpen(false)}
+        pageId={pageId}
+      />
     </div>
   );
 };

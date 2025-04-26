@@ -5,6 +5,7 @@ import { Page, PageResponse } from '../../models/page/Page';
 import PageProfileCard from './PageProfileCard';
 import CreatePageDialog from './CreatePageDialog';
 import PageSettingsDropdown from './PageSettingsDropdown';
+import PageMembersDialog from './PageMembersDialog';
 import { toast } from 'react-toastify';
 
 interface MyPageDetailProps {
@@ -26,6 +27,8 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   const settingsRef = useRef<HTMLDivElement>(null);
   const lastPageRef = useRef<HTMLDivElement>(null);
   const observer = useRef<IntersectionObserver | null>(null);
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
   const { get, post } = useFetch();
 
@@ -128,6 +131,7 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
 
   const handleSettingsClick = (e: React.MouseEvent, pageId: string) => {
     e.stopPropagation();
+    console.log('Settings clicked for page:', pageId);
     setSettingsOpenForPage(settingsOpenForPage === pageId ? null : pageId);
   };
 
@@ -136,8 +140,14 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
     setSettingsOpenForPage(null);
   };
 
-  const handleAddMember = (pageId: string) => {
-    setSelectedPageType(`${pageId}/members`);
+  const handleAddMember = (pageId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log('Opening members dialog for page:', pageId);
+    setSelectedPageId(pageId);
+    setIsMembersDialogOpen(true);
     setSettingsOpenForPage(null);
   };
 
@@ -366,7 +376,7 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
                     isOpen={settingsOpenForPage === page._id}
                     onClose={() => setSettingsOpenForPage(null)}
                     onUpdate={() => handleUpdatePage(page._id)}
-                    onAddMember={() => handleAddMember(page._id)}
+                    onAddMember={(e) => handleAddMember(page._id, e)}
                     onDelete={() => handleDeletePage(page._id)}
                     onToggleStatus={() => handleToggleStatus(page._id)}
                     isPublished={page.isPublished}
@@ -397,6 +407,18 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
         onClose={() => setIsCreatePageOpen(false)}
         onSuccess={handleCreatePageSuccess}
       />
+
+      {selectedPageId && (
+        <PageMembersDialog
+          isOpen={isMembersDialogOpen}
+          onClose={() => {
+            console.log('Closing members dialog');
+            setIsMembersDialogOpen(false);
+            setSelectedPageId(null);
+          }}
+          pageId={selectedPageId}
+        />
+      )}
     </div>
   );
 };

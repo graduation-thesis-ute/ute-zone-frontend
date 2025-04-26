@@ -46,6 +46,9 @@ interface Comment {
   parent?: {
     _id: string;
   };
+  isReacted: number;
+  totalCommentReactions: number;
+  replies?: Comment[];
 }
 
 const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
@@ -75,6 +78,14 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reactionButtonRef = useRef<HTMLDivElement>(null);
   const reactionMenuRef = useRef<HTMLDivElement>(null);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [replyPages, setReplyPages] = useState<Record<string, number>>({});
+  const [replyHasMore, setReplyHasMore] = useState<Record<string, boolean>>({});
+  const [commentReplies, setCommentReplies] = useState<Record<string, Comment[]>>({});
 
   const reactionTypes = [
     { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
@@ -471,6 +482,148 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     );
   };
 
+  const handleReplyClick = (comment: Comment) => {
+    setReplyingTo(comment);
+    setReplyContent('');
+    setReplyImagePreview(null);
+  };
+
+  const handleReplyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplyImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error reading file:', error);
+    }
+  };
+
+  const handleSubmitReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyingTo || (!replyContent.trim() && !replyImagePreview)) return;
+
+    try {
+      setIsSubmittingReply(true);
+      let imageUrl = null;
+
+      if (replyImagePreview) {
+        imageUrl = await uploadImage2(replyImagePreview, postComment);
+      }
+
+      const response = await postComment('/v1/page-post-comment/create', {
+        pagePost: post._id,
+        content: replyContent,
+        imageUrl,
+        parent: replyingTo._id
+      });
+
+      if (response.result) {
+        setReplyContent('');
+        setReplyImagePreview(null);
+        setReplyingTo(null);
+        setComments([]);
+        setCurrentPage(0);
+        fetchComments();
+        if (onPostUpdated) {
+          onPostUpdated();
+        }
+      }
+    } catch (error) {
+      console.error('Error posting reply:', error);
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const fetchReplies = async (commentId: string, page: number = 0) => {
+    try {
+      console.log('Fetching replies for comment:', commentId);
+      const response = await get('/v1/page-post-comment/list', {
+        parent: commentId,
+        pagePost: post._id,
+        page: page.toString(),
+        size: '5',
+        isPaged: '1'
+      });
+
+      console.log('Replies response:', response);
+      const newReplies = response.data.content;
+      if (page === 0) {
+        setCommentReplies(prev => ({
+          ...prev,
+          [commentId]: newReplies
+        }));
+      } else {
+        setCommentReplies(prev => ({
+          ...prev,
+          [commentId]: [...(prev[commentId] || []), ...newReplies]
+        }));
+      }
+
+      setReplyHasMore(prev => ({
+        ...prev,
+        [commentId]: page < response.data.totalPages - 1
+      }));
+      setReplyPages(prev => ({
+        ...prev,
+        [commentId]: page
+      }));
+    } catch (error) {
+      console.error('Error fetching replies:', error);
+    }
+  };
+
+  const handleToggleReplies = async (comment: Comment) => {
+    console.log('Toggling replies for comment:', comment._id);
+    if (expandedReplies.has(comment._id)) {
+      setExpandedReplies(prev => {
+        const next = new Set(prev);
+        next.delete(comment._id);
+        return next;
+      });
+    } else {
+      setExpandedReplies(prev => new Set([...prev, comment._id]));
+      if (!commentReplies[comment._id]) {
+        await fetchReplies(comment._id);
+      }
+    }
+  };
+
+  const handleLoadMoreReplies = async (comment: Comment) => {
+    const nextPage = (replyPages[comment._id] || 0) + 1;
+    await fetchReplies(comment._id, nextPage);
+  };
+
+  const handleCommentReaction = async (comment: Comment) => {
+    try {
+      const response = await postComment('/v1/page-post-comment/reaction', {
+        commentId: comment._id,
+        reactionType: 1
+      });
+
+      if (response.result) {
+        setComments(prev => prev.map(c => 
+          c._id === comment._id 
+            ? { 
+                ...c, 
+                isReacted: c.isReacted ? 0 : 1,
+                totalCommentReactions: c.isReacted 
+                  ? c.totalCommentReactions - 1 
+                  : c.totalCommentReactions + 1
+              }
+            : c
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling comment reaction:', error);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -645,8 +798,20 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                     )}
                   </div>
                   <div className="flex items-center space-x-3 mt-1 px-2">
-                    <button className="text-xs font-medium hover:underline">Thích</button>
-                    <button className="text-xs font-medium hover:underline">Phản hồi</button>
+                    <button 
+                      className={`text-xs font-medium hover:underline ${
+                        comment.isReacted ? 'text-blue-500' : ''
+                      }`}
+                      onClick={() => handleCommentReaction(comment)}
+                    >
+                      Thích {comment.totalCommentReactions > 0 && `(${comment.totalCommentReactions})`}
+                    </button>
+                    <button 
+                      className="text-xs font-medium hover:underline"
+                      onClick={() => handleReplyClick(comment)}
+                    >
+                      Phản hồi
+                    </button>
                     <p className="text-xs text-gray-500">
                       {formatTime(comment.createdAt)}
                     </p>
@@ -654,6 +819,129 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                       <span className="text-xs text-gray-400">đã chỉnh sửa</span>
                     )}
                   </div>
+
+                  {/* Replies Section */}
+                  {comment.totalChildren && comment.totalChildren > 0 && (
+                    <div className="mt-2 ml-4">
+                      <button
+                        className="text-xs text-blue-500 hover:underline"
+                        onClick={() => handleToggleReplies(comment)}
+                      >
+                        {expandedReplies.has(comment._id) ? 'Ẩn phản hồi' : `Xem ${comment.totalChildren} phản hồi`}
+                      </button>
+
+                      {expandedReplies.has(comment._id) && commentReplies[comment._id] && (
+                        <div className="mt-2 space-y-2">
+                          {commentReplies[comment._id].map((reply, replyIndex) => (
+                            <div key={`${reply._id}-${replyIndex}`} className="flex space-x-2">
+                              <img
+                                src={reply.user.avatarUrl || '/default-avatar.png'}
+                                alt={reply.user.displayName}
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                              <div className="flex-1">
+                                <div className="bg-gray-100 rounded-2xl p-2 inline-block">
+                                  <p className="font-semibold text-xs">{reply.user.displayName}</p>
+                                  <p className="text-xs">{reply.content}</p>
+                                  {reply.imageUrl && (
+                                    <img 
+                                      src={reply.imageUrl} 
+                                      alt="Reply image" 
+                                      className="mt-1 rounded-lg max-h-32 object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2 mt-1 px-2">
+                                  <button 
+                                    className={`text-xs font-medium hover:underline ${
+                                      reply.isReacted ? 'text-blue-500' : ''
+                                    }`}
+                                    onClick={() => handleCommentReaction(reply)}
+                                  >
+                                    Thích {reply.totalCommentReactions > 0 && `(${reply.totalCommentReactions})`}
+                                  </button>
+                                  <p className="text-xs text-gray-500">
+                                    {formatTime(reply.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {replyHasMore[comment._id] && (
+                            <button
+                              className="text-xs text-blue-500 hover:underline ml-8"
+                              onClick={() => handleLoadMoreReplies(comment)}
+                            >
+                              Xem thêm phản hồi
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Reply Input */}
+                  {replyingTo?._id === comment._id && (
+                    <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
+                      <div className="flex items-center space-x-2">
+                        <img
+                          src={profile?.avatarUrl || "/default-avatar.png"}
+                          alt="Your avatar"
+                          className="w-6 h-6 rounded-full object-cover"
+                        />
+                        <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
+                          <input
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="Viết phản hồi..."
+                            className="w-full bg-transparent focus:outline-none text-xs"
+                          />
+                          <div className="flex space-x-2">
+                            {!replyImagePreview && (
+                              <label className="cursor-pointer text-blue-500">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleReplyImageUpload}
+                                  className="hidden"
+                                />
+                                <ImageIcon size={16} />
+                              </label>
+                            )}
+                            <button
+                              type="submit"
+                              disabled={isSubmittingReply || (!replyContent.trim() && !replyImagePreview)}
+                              className="text-blue-500 disabled:text-gray-400"
+                            >
+                              {isSubmittingReply ? (
+                                <Loader2 className="animate-spin" size={16} />
+                              ) : (
+                                <Send size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {replyImagePreview && (
+                        <div className="relative mt-1 ml-8 inline-block">
+                          <img
+                            src={replyImagePreview}
+                            alt="Preview"
+                            className="max-h-24 rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setReplyImagePreview(null)}
+                            className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 text-white rounded-full"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </form>
+                  )}
                 </div>
               </div>
             ))}
