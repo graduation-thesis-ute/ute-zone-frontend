@@ -15,7 +15,14 @@ import {
     Globe,
     Lock,
     Trash2,
-    Edit
+    Edit,
+    X,
+    ThumbsUp,
+    MessageCircle,
+    Share2,
+    MoreHorizontal,
+    CheckSquare,
+    Square
 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import GroupJoinRequests from './GroupJoinRequests';
@@ -24,6 +31,8 @@ import { useProfile } from '../../types/UserContext';
 import { ConfimationDialog } from '../Dialog';
 import useDialog from '../../hooks/useDialog';
 import UpdateGroupDialog from './UpdateGroupDialog';
+import CreateGroupPostDialog from './CreateGroupPostDialog';
+import GroupPost from './GroupPost';
 
 interface GroupData {
     _id: string;
@@ -57,6 +66,32 @@ interface GroupMemberResponse {
     totalElements: number;
 }
 
+interface GroupPost {
+    _id: string;
+    content: string;
+    imageUrls: string[];
+    createdAt: string;
+    user: {
+        _id: string;
+        displayName: string;
+        avatarUrl?: string;
+    };
+    status: number;
+    group?: {
+        _id: string;
+        name: string;
+        avatarUrl?: string;
+    };
+    isOwner?: number;
+    updatedAt?: string;
+}
+
+interface GroupPostResponse {
+    content: GroupPost[];
+    totalPages: number;
+    totalElements: number;
+}
+
 interface GroupManagementProps {
     groupId: string;
 }
@@ -79,6 +114,12 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsRef = useRef<HTMLDivElement>(null);
     const [isUpdateDialogVisible, setIsUpdateDialogVisible] = useState(false);
+    const [posts, setPosts] = useState<GroupPost[]>([]);
+    const [pendingPosts, setPendingPosts] = useState<GroupPost[]>([]);
+    const [isCreatePostDialogVisible, setIsCreatePostDialogVisible] = useState(false);
+    const [isPostsLoading, setIsPostsLoading] = useState(false);
+    const [isPendingPostsLoading, setIsPendingPostsLoading] = useState(false);
+    const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchGroupData = async () => {
@@ -124,6 +165,43 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
 
         fetchMembers();
     }, [activeTab, groupId, get, profile]);
+
+    const fetchPosts = async () => {
+        try {
+            setIsPostsLoading(true);
+            const response = await get('/v1/group-post/list', { groupId, status: 2 });
+            const postResponse = response.data as GroupPostResponse;
+            setPosts(postResponse.content);
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+        } finally {
+            setIsPostsLoading(false);
+        }
+    };
+
+    const fetchPendingPosts = async () => {
+        try {
+            setIsPendingPostsLoading(true);
+            const response = await get('/v1/group-post/list', { groupId, status: 1 });
+            console.log('API Response:', response);
+            const postResponse = response.data as GroupPostResponse;
+            console.log('Pending Posts Data:', postResponse);
+            setPendingPosts(postResponse.content);
+        } catch (error) {
+            console.error('Error fetching pending posts:', error);
+            toast.error('Có lỗi xảy ra khi tải bài viết chờ duyệt');
+        } finally {
+            setIsPendingPostsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'posts') {
+            fetchPosts();
+        } else if (activeTab === 'pending-posts') {
+            fetchPendingPosts();
+        }
+    }, [activeTab, groupId]);
 
     const handleUpdateRole = async (memberId: string, newRole: number) => {
         try {
@@ -265,6 +343,111 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         }
     };
 
+    const handlePostCreated = () => {
+        fetchPosts();
+        fetchPendingPosts();
+    };
+
+    const handleApprovePost = async (postId: string) => {
+        try {
+          console.log(postId);
+            if (!postId) {
+                console.log('Post ID is undefined or null');
+                toast.error('Không tìm thấy bài viết');
+                return;
+            }
+            await put('/v1/group-post/change-status', { id: postId, status: 2 });
+            toast.success('Đã duyệt bài viết');
+            fetchPendingPosts();
+            fetchPosts();
+        } catch (error) {
+            console.error('Error approving post:', error);
+            toast.error('Có lỗi xảy ra khi duyệt bài');
+        }
+    };
+
+    const handleRejectPost = async (postId: string) => {
+        try {
+            if (!postId) {
+                toast.error('Không tìm thấy bài viết');
+                return;
+            }
+            await put('/v1/group-post/change-status', { id: postId, status: 3 });
+            toast.success('Đã từ chối bài viết');
+            fetchPendingPosts();
+        } catch (error) {
+            console.error('Error rejecting post:', error);
+            toast.error('Có lỗi xảy ra khi từ chối bài');
+        }
+    };
+
+    const handleSelectAllPosts = () => {
+        if (selectedPosts.length === pendingPosts.length) {
+            setSelectedPosts([]);
+        } else {
+            setSelectedPosts(pendingPosts.map(post => post._id || (post as any).id));
+        }
+    };
+
+    const handleSelectPost = (postId: string) => {
+        setSelectedPosts(prev => {
+            if (prev.includes(postId)) {
+                return prev.filter(id => id !== postId);
+            } else {
+                return [...prev, postId];
+            }
+        });
+    };
+
+    const handleApproveSelected = async () => {
+        if (selectedPosts.length === 0) {
+            toast.warning('Vui lòng chọn bài viết cần duyệt');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await Promise.all(
+                selectedPosts.map(postId =>
+                    put('/v1/group-post/change-status', { id: postId, status: 2 })
+                )
+            );
+            toast.success(`Đã duyệt ${selectedPosts.length} bài viết`);
+            setSelectedPosts([]);
+            fetchPendingPosts();
+            fetchPosts();
+        } catch (error) {
+            console.error('Error approving posts:', error);
+            toast.error('Có lỗi xảy ra khi duyệt bài');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRejectSelected = async () => {
+        if (selectedPosts.length === 0) {
+            toast.warning('Vui lòng chọn bài viết cần từ chối');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await Promise.all(
+                selectedPosts.map(postId =>
+                    put('/v1/group-post/change-status', { id: postId, status: 3 })
+                )
+            );
+            toast.success(`Đã từ chối ${selectedPosts.length} bài viết`);
+            setSelectedPosts([]);
+            fetchPendingPosts();
+        } catch (error) {
+            console.error('Error rejecting posts:', error);
+            toast.error('Có lỗi xảy ra khi từ chối bài');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Close settings dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -369,51 +552,118 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         </div>
     );
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'posts':
-                return (
-                    <div className="text-center text-gray-500 py-8">
-                        Chưa có bài viết nào.
+    const renderPostsContent = () => (
+        <div className="space-y-4">
+            {isPostsLoading ? (
+                <div key="loading" className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            ) : posts.length > 0 ? (
+                posts.map(post => (
+                    <GroupPost key={post._id} post={post} />
+                ))
+            ) : (
+                <div key="no-posts" className="text-center text-gray-500 py-8">
+                    Chưa có bài viết nào.
+                </div>
+            )}
+        </div>
+    );
+
+    const renderPendingPostsContent = () => {
+        return (
+            <div className="space-y-4">
+                {isPendingPostsLoading ? (
+                    <div key="loading" className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                     </div>
-                );
-            case 'members':
-                return renderMembersContent();
-            case 'pending-posts':
-                return (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-semibold">Bài viết chờ duyệt</h2>
-                            <div className="flex space-x-2">
-                                <button className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                                    Duyệt tất cả
+                ) : pendingPosts.length > 0 ? (
+                    <>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={handleSelectAllPosts}
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    {selectedPosts.length === pendingPosts.length ? (
+                                        <CheckSquare className="w-6 h-6 text-blue-500" />
+                                    ) : (
+                                        <Square className="w-6 h-6 text-gray-400" />
+                                    )}
                                 </button>
+                                <span className="text-sm text-gray-500">
+                                    {selectedPosts.length} bài viết được chọn
+                                </span>
                             </div>
+                            {selectedPosts.length > 0 && (
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={handleApproveSelected}
+                                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                    >
+                                        Duyệt {selectedPosts.length} bài
+                                    </button>
+                                    <button
+                                        onClick={handleRejectSelected}
+                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                                    >
+                                        Từ chối {selectedPosts.length} bài
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                        <div className="bg-white rounded-lg shadow">
-                            <div className="p-4 border-b">
-                                <div className="flex items-start space-x-4">
-                                    <div className="w-12 h-12 rounded-full bg-gray-200"></div>
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold">Nguyễn Văn A</h3>
-                                        <p className="text-gray-500 text-sm">2 giờ trước</p>
-                                        <p className="mt-2">Nội dung bài viết chờ duyệt...</p>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <button className="p-2 text-green-500 hover:bg-green-50 rounded-full">
-                                            <CheckCircle className="w-5 h-5" />
+                        {pendingPosts.map(post => {
+                            const postId = (post as any).id || post._id;
+                            return (
+                                <div key={postId} className="bg-white rounded-lg shadow">
+                                    <div className="flex items-center px-4 py-2 border-b border-gray-100">
+                                        <button
+                                            onClick={() => handleSelectPost(postId)}
+                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                        >
+                                            {selectedPosts.includes(postId) ? (
+                                                <CheckSquare className="w-5 h-5 text-blue-500" />
+                                            ) : (
+                                                <Square className="w-5 h-5 text-gray-400" />
+                                            )}
                                         </button>
-                                        <button className="p-2 text-red-500 hover:bg-red-50 rounded-full">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
+                                    </div>
+                                    <GroupPost post={post} />
+                                    <div className="px-4 py-2 border-t border-gray-200 flex justify-end space-x-2">
+                                        <button
+                                            onClick={() => handleApprovePost(postId)}
+                                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                        >
+                                            Duyệt
+                                        </button>
+                                        <button
+                                            onClick={() => handleRejectPost(postId)}
+                                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                                        >
+                                            Từ chối
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })}
+                    </>
+                ) : (
+                    <div key="no-pending-posts" className="text-center text-gray-500 py-8">
+                        Không có bài viết nào chờ duyệt.
                     </div>
-                );
+                )}
+            </div>
+        );
+    };
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'posts':
+                return renderPostsContent();
+            case 'members':
+                return renderMembersContent();
+            case 'pending-posts':
+                return renderPendingPostsContent();
             case 'pending-members':
                 return <GroupJoinRequests groupId={groupId} />;
             default:
@@ -455,12 +705,6 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                         className="w-full h-full object-cover"
                     />
                 )}
-                {userRole !== 3 && (
-                    <button className="absolute bottom-4 right-4 flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-md hover:bg-white/30">
-                        <Plus className="w-5 h-5 mr-2" />
-                        Thêm ảnh bìa
-                    </button>
-                )}
             </div>
 
             {/* Group Info */}
@@ -500,7 +744,10 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
 
                     {/* Action Buttons */}
                     <div className="ml-auto flex items-center space-x-3">
-                        <button className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        <button 
+                            onClick={() => setIsCreatePostDialogVisible(true)}
+                            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
                             Đăng bài
                         </button>
                         {userRole !== 3 && (
@@ -592,6 +839,12 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                 confirmText="Xác nhận"
                 onCancel={hideDialog}
                 color="blue"
+            />
+            <CreateGroupPostDialog
+                isVisible={isCreatePostDialogVisible}
+                onClose={() => setIsCreatePostDialogVisible(false)}
+                onPostCreated={handlePostCreated}
+                groupId={groupId}
             />
         </div>
     );
