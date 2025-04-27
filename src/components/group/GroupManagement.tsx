@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     MessageSquare, 
     Users,
@@ -11,7 +11,11 @@ import {
     Clock,
     Shield,
     MoreVertical,
-    ChevronDown
+    ChevronDown,
+    Globe,
+    Lock,
+    Trash2,
+    Edit
 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import GroupJoinRequests from './GroupJoinRequests';
@@ -19,15 +23,17 @@ import { toast } from 'react-toastify';
 import { useProfile } from '../../types/UserContext';
 import { ConfimationDialog } from '../Dialog';
 import useDialog from '../../hooks/useDialog';
+import UpdateGroupDialog from './UpdateGroupDialog';
 
 interface GroupData {
-    id: string;
+    _id: string;
     name: string;
     description: string;
-    memberCount: number;
+    members: number;
     postCount: number;
-    coverImage?: string;
-    avatar?: string;
+    coverUrl?: string;
+    avatarUrl?: string;
+    privacy: number;
 }
 
 interface GroupMember {
@@ -59,15 +65,20 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     const [activeTab, setActiveTab] = useState('posts');
     const [group, setGroup] = useState<GroupData | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
+    const [memberCount, setMemberCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isMembersLoading, setIsMembersLoading] = useState(false);
     const { get, put, del } = useFetch();
     const { profile } = useProfile();
     const [isOwner, setIsOwner] = useState(false);
+    const [userRole, setUserRole] = useState<number | null>(null);
     const { isDialogVisible, showDialog, hideDialog } = useDialog();
     const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
     const [newRole, setNewRole] = useState<number | null>(null);
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const settingsRef = useRef<HTMLDivElement>(null);
+    const [isUpdateDialogVisible, setIsUpdateDialogVisible] = useState(false);
 
     useEffect(() => {
         const fetchGroupData = async () => {
@@ -95,12 +106,14 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     const response = await get('/v1/group-member/list', { group: groupId });
                     const memberResponse = response.data as GroupMemberResponse;
                     setMembers(memberResponse.content);
+                    setMemberCount(memberResponse.totalElements);
                     
                     // Check if current user is the group owner
                     const currentUserMember = memberResponse.content.find(
                         member => member.user._id === profile?._id
                     );
                     setIsOwner(currentUserMember?.role === 1);
+                    setUserRole(currentUserMember?.role || null);
                 } catch (error) {
                     console.error('Error fetching members:', error);
                 } finally {
@@ -205,24 +218,88 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         );
     };
 
+    const handleUpdateGroup = () => {
+        setIsUpdateDialogVisible(true);
+    };
+
+    const handleGroupUpdated = () => {
+        // Refresh group data
+        const fetchGroupData = async () => {
+            try {
+                setIsLoading(true);
+                const response = await get(`/v1/group/get/${groupId}`);
+                setGroup(response.data);
+            } catch (error) {
+                console.error('Error fetching group data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchGroupData();
+    };
+
+    const handleChangePrivacy = async () => {
+        try {
+            await put(`/v1/group/update-privacy/${groupId}`, {
+                privacy: group?.privacy === 1 ? 2 : 1
+            });
+            // Refresh group data
+            const response = await get(`/v1/group/get/${groupId}`);
+            setGroup(response.data);
+            toast.success(`Đã chuyển nhóm sang ${group?.privacy === 1 ? 'riêng tư' : 'công khai'}`);
+        } catch (error) {
+            console.error('Error changing privacy:', error);
+            toast.error('Có lỗi xảy ra khi thay đổi quyền riêng tư');
+        }
+    };
+
+    const handleDeleteGroup = async () => {
+        try {
+            await del(`/v1/group/delete/${groupId}`);
+            toast.success('Đã xóa nhóm thành công');
+            // TODO: Navigate back to groups list
+        } catch (error) {
+            console.error('Error deleting group:', error);
+            toast.error('Có lỗi xảy ra khi xóa nhóm');
+        }
+    };
+
+    // Close settings dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+                setIsSettingsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     const tabs = [
         { id: 'posts', label: 'Bài viết', icon: MessageSquare },
         { id: 'members', label: 'Thành viên', icon: Users },
-        { id: 'pending-posts', label: 'Duyệt bài', icon: Clock },
-        { id: 'pending-members', label: 'Yêu cầu tham gia', icon: UserPlus },
+        ...(userRole !== 3 ? [
+            { id: 'pending-posts', label: 'Duyệt bài', icon: Clock },
+            { id: 'pending-members', label: 'Yêu cầu tham gia', icon: UserPlus },
+        ] : []),
         { id: 'media', label: 'Ảnh/Video', icon: Image },
-        { id: 'files', label: 'Tệp', icon: FileText },
-        { id: 'settings', label: 'Cài đặt', icon: Settings }
+        { id: 'files', label: 'Tệp', icon: FileText }
     ];
 
     const renderMembersContent = () => (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Thành viên nhóm</h2>
-                <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                    <UserPlus className="w-5 h-5 mr-2 inline-block" />
-                    Thêm thành viên
-                </button>
+                {userRole !== 3 && (
+                    <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        <UserPlus className="w-5 h-5 mr-2 inline-block" />
+                        Thêm thành viên
+                    </button>
+                )}
             </div>
             {isMembersLoading ? (
                 <div className="flex justify-center py-8">
@@ -371,17 +448,19 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         <div className="bg-white">
             {/* Cover Photo */}
             <div className="h-64 bg-gradient-to-r from-blue-500 to-purple-600 relative">
-                {group.coverImage && (
+                {group.coverUrl && (
                     <img 
-                        src={group.coverImage} 
+                        src={group.coverUrl} 
                         alt={`${group.name} cover`}
                         className="w-full h-full object-cover"
                     />
                 )}
-                <button className="absolute bottom-4 right-4 flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-md hover:bg-white/30">
-                    <Plus className="w-5 h-5 mr-2" />
-                    Thêm ảnh bìa
-                </button>
+                {userRole !== 3 && (
+                    <button className="absolute bottom-4 right-4 flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-md hover:bg-white/30">
+                        <Plus className="w-5 h-5 mr-2" />
+                        Thêm ảnh bìa
+                    </button>
+                )}
             </div>
 
             {/* Group Info */}
@@ -389,8 +468,8 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                 <div className="flex items-center -mt-8 relative z-10">
                     {/* Avatar */}
                     <div className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
-                        {group.avatar ? (
-                            <img src={group.avatar} alt={group.name} className="w-full h-full object-cover" />
+                        {group.avatarUrl ? (
+                            <img src={group.avatarUrl} alt={group.name} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full bg-blue-100 flex items-center justify-center">
                                 <Users className="w-16 h-16 text-blue-500" />
@@ -400,15 +479,74 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
 
                     {/* Group Name & Stats */}
                     <div className="ml-4">
-                        <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
-                        <p className="text-gray-500">{group.memberCount} thành viên</p>
+                        <div className="flex items-center space-x-3">
+                            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+                            <div className="flex items-center text-sm text-gray-500">
+                                {group.privacy === 1 ? (
+                                    <>
+                                        <Globe className="w-4 h-4 mr-1" />
+                                        <span>Công khai</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Lock className="w-4 h-4 mr-1" />
+                                        <span>Riêng tư</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        <p className="text-gray-500">{group.members} thành viên</p>
                     </div>
 
-                    {/* Action Button */}
-                    <div className="ml-auto">
+                    {/* Action Buttons */}
+                    <div className="ml-auto flex items-center space-x-3">
                         <button className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
                             Đăng bài
                         </button>
+                        {userRole !== 3 && (
+                            <div ref={settingsRef} className="relative">
+                                <button 
+                                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <Settings className="w-5 h-5" />
+                                </button>
+                                {isSettingsOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                        <button
+                                            onClick={handleUpdateGroup}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Cập nhật thông tin
+                                        </button>
+                                        <button
+                                            onClick={handleChangePrivacy}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            {group.privacy === 1 ? (
+                                                <>
+                                                    <Lock className="w-4 h-4 mr-2" />
+                                                    Chuyển sang riêng tư
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Globe className="w-4 h-4 mr-2" />
+                                                    Chuyển sang công khai
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleDeleteGroup}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Xóa nhóm
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -438,6 +576,12 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     {renderContent()}
                 </div>
             </div>
+            <UpdateGroupDialog
+                isVisible={isUpdateDialogVisible}
+                onClose={() => setIsUpdateDialogVisible(false)}
+                onGroupUpdated={handleGroupUpdated}
+                group={group}
+            />
             <ConfimationDialog
                 isVisible={isDialogVisible}
                 title="Xác nhận thay đổi vai trò"

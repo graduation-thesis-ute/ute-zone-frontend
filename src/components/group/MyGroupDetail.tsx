@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import GroupCard from './GroupCard';
+import CreateGroupDialog from './CreateGroupDialog';
 
 interface Group {
     _id: string;
@@ -37,32 +38,42 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
     const [groups, setGroups] = useState<Group[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isCreateDialogVisible, setIsCreateDialogVisible] = useState(false);
     const { get } = useFetch();
 
-    useEffect(() => {
-        const fetchMyGroups = async () => {
-            try {
-                setIsLoading(true);
-                const response = await get('/v1/group/list?isOwner=1');
-                const data: GroupResponse = response.data;
-                const myGroups = data.content.filter(group => group.isOwner === 1) || [];
-                setGroups(myGroups);
-                console.log("myGroups", myGroups);
-            } catch (error) {
-                console.error('Error fetching my groups:', error);
-                setGroups([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const fetchMyGroups = async () => {
+        try {
+            setIsLoading(true);
+            const response = await get('/v1/group/list?isOwner=1');
+            const data: GroupResponse = response.data;
+            const myGroups = data.content.filter(group => group.isOwner === 1) || [];
+            setGroups(myGroups);
+            console.log("myGroups", myGroups);
+        } catch (error) {
+            console.error('Error fetching my groups:', error);
+            setGroups([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchMyGroups();
-    }, [get]);
+    }, []);
 
     const handleSettingsClick = (e: React.MouseEvent, groupId: string) => {
         e.stopPropagation();
         // Xử lý khi click vào nút settings
         console.log('Settings clicked for group:', groupId);
+    };
+
+    const handleCreateGroup = () => {
+        setIsCreateDialogVisible(true);
+    };
+
+    const handleGroupCreated = () => {
+        // Refresh the groups list
+        fetchMyGroups();
     };
 
     const filteredGroups = groups.filter(group => 
@@ -75,7 +86,10 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Nhóm của tôi</h1>
-                <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200">
+                <button 
+                    onClick={handleCreateGroup}
+                    className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+                >
                     <Plus className="w-5 h-5 mr-2" />
                     Tạo nhóm mới
                 </button>
@@ -129,11 +143,20 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Bạn chưa có nhóm nào</h3>
                     <p className="text-gray-500 mb-4">Tạo nhóm mới để bắt đầu kết nối với bạn bè</p>
-                    <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200">
+                    <button 
+                        onClick={handleCreateGroup}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+                    >
                         Tạo nhóm mới
                     </button>
                 </div>
             )}
+
+            <CreateGroupDialog
+                isVisible={isCreateDialogVisible}
+                onClose={() => setIsCreateDialogVisible(false)}
+                onGroupCreated={handleGroupCreated}
+            />
         </div>
     );
 };
