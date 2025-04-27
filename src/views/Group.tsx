@@ -6,7 +6,7 @@ import useFetch from '../hooks/useFetch';
 import SuggestedGroups from '../components/group/SuggestedGroups';
 import { useNavigate } from 'react-router-dom';
 import GroupManagement from '../components/group/GroupManagement';
-
+import JoinedGroups from '../components/group/JoinedGroups';
 interface GroupProps {
     groupId: string;
     setSelectedGroupType: (type: string) => void;
@@ -21,7 +21,7 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
         const fetchGroupData = async () => {
             try {
                 // If groupId is "my-groups", "followed", or "community", don't fetch
-                if (groupId === "my-groups" || groupId === "followed" || groupId === "community") {
+                if (groupId === "my-groups" || groupId === "joined-groups" || groupId === "community") {
                     return;
                 }
 
@@ -38,14 +38,14 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
 
     const handleGroupClick = (groupId: string) => {
         // Nếu groupId là ID của một nhóm cụ thể, hiển thị GroupManagement
-        if (groupId !== "my-groups" && groupId !== "followed" && groupId !== "community") {
+        if (groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community") {
             setSelectedGroupType(groupId);
         }
     };
 
     const renderContent = () => {
         // Nếu groupId là ID của một nhóm cụ thể, hiển thị GroupManagement
-        if (groupId !== "my-groups" && groupId !== "followed" && groupId !== "community") {
+        if (groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community") {
             return <GroupManagement groupId={groupId} />;
         }
 
@@ -53,8 +53,8 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
         switch (groupId) {
             case "my-groups":
                 return <MyGroupDetail onGroupClick={handleGroupClick} />;
-            case "followed":
-                return groupData ? <FollowedGroupDetail group={groupData} /> : null;
+            case "joined-groups":
+                return <JoinedGroups onGroupClick={handleGroupClick} />;
             case "community":
                 return groupData ? <CommunityGroupFeed group={groupData} /> : null;
             default:

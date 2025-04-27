@@ -269,6 +269,17 @@ const Home = () => {
                 <span>Nhóm của tôi</span>
               </button>
               <button
+                onClick={() => setSelectedGroupType("joined-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "joined-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Nhóm đã tham gia</span>
+              </button>
+              <button
                 onClick={() => setSelectedGroupType("community-groups")}
                 className={`flex items-center space-x-2 py-2 px-4 rounded ${
                   selectedGroupType === "community-groups"

@@ -10,9 +10,15 @@ import {
     UserPlus,
     Clock,
     Shield,
-    MoreVertical
+    MoreVertical,
+    ChevronDown
 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
+import GroupJoinRequests from './GroupJoinRequests';
+import { toast } from 'react-toastify';
+import { useProfile } from '../../types/UserContext';
+import { ConfimationDialog } from '../Dialog';
+import useDialog from '../../hooks/useDialog';
 
 interface GroupData {
     id: string;
@@ -56,6 +62,12 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isMembersLoading, setIsMembersLoading] = useState(false);
     const { get, put, del } = useFetch();
+    const { profile } = useProfile();
+    const [isOwner, setIsOwner] = useState(false);
+    const { isDialogVisible, showDialog, hideDialog } = useDialog();
+    const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
+    const [newRole, setNewRole] = useState<number | null>(null);
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchGroupData = async () => {
@@ -83,7 +95,12 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     const response = await get('/v1/group-member/list', { group: groupId });
                     const memberResponse = response.data as GroupMemberResponse;
                     setMembers(memberResponse.content);
-                    console.log("members response", response.data);
+                    
+                    // Check if current user is the group owner
+                    const currentUserMember = memberResponse.content.find(
+                        member => member.user._id === profile?._id
+                    );
+                    setIsOwner(currentUserMember?.role === 1);
                 } catch (error) {
                     console.error('Error fetching members:', error);
                 } finally {
@@ -93,25 +110,40 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         };
 
         fetchMembers();
-    }, [activeTab, groupId, get]);
+    }, [activeTab, groupId, get, profile]);
 
     const handleUpdateRole = async (memberId: string, newRole: number) => {
         try {
             await put('/v1/group-member/update-role', {
-                memberId,
+                groupMemberId: memberId,
                 role: newRole
             });
             // Refresh member list
-            const response = await get('/v1/group-member/list', { groupId });
-            setMembers(response.data);
+            const response = await get('/v1/group-member/list', { group: groupId });
+            setMembers(response.data.content);
+            toast.success('Đã cập nhật vai trò thành viên');
         } catch (error) {
             console.error('Error updating member role:', error);
+            toast.error('Có lỗi xảy ra khi cập nhật vai trò');
+        }
+    };
+
+    const handleRoleChange = (member: GroupMember, role: number) => {
+        setSelectedMember(member);
+        setNewRole(role);
+        showDialog();
+    };
+
+    const confirmRoleChange = async () => {
+        if (selectedMember && newRole) {
+            await handleUpdateRole(selectedMember._id, newRole);
+            hideDialog();
         }
     };
 
     const handleRemoveMember = async (memberId: string) => {
         try {
-            await del(`/v1/group-member/delete/${memberId}`);
+            await del(`/v1/group-member/delete`, { groupMemberId: memberId });
             // Refresh member list
             const response = await get('/v1/group-member/list', { groupId });
             setMembers(response.data);
@@ -133,6 +165,46 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         }
     };
 
+    const toggleDropdown = (memberId: string) => {
+        setOpenDropdownId(openDropdownId === memberId ? null : memberId);
+    };
+
+    const renderRoleDropdown = (member: GroupMember) => {
+        if (!isOwner || member.role === 1) return null;
+
+        return (
+            <div className="relative">
+                <button 
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                    title="Thay đổi vai trò"
+                    onClick={() => toggleDropdown(member._id)}
+                >
+                    <Shield className="w-5 h-5" />
+                </button>
+                {openDropdownId === member._id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                        <button
+                            onClick={() => handleRoleChange(member, 2)}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                                member.role === 2 ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                            Quản trị viên
+                        </button>
+                        <button
+                            onClick={() => handleRoleChange(member, 3)}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                                member.role === 3 ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                            Thành viên
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const tabs = [
         { id: 'posts', label: 'Bài viết', icon: MessageSquare },
         { id: 'members', label: 'Thành viên', icon: Users },
@@ -143,6 +215,83 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         { id: 'settings', label: 'Cài đặt', icon: Settings }
     ];
 
+    const renderMembersContent = () => (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">Thành viên nhóm</h2>
+                <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                    <UserPlus className="w-5 h-5 mr-2 inline-block" />
+                    Thêm thành viên
+                </button>
+            </div>
+            {isMembersLoading ? (
+                <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            ) : members.length > 0 ? (
+                <div className="bg-white rounded-lg shadow divide-y">
+                    {members.map(member => (
+                        <div key={member._id} className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
+                                        {member.user.avatarUrl ? (
+                                            <img 
+                                                src={member.user.avatarUrl} 
+                                                alt={member.user.displayName}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-300">
+                                                <Users className="w-6 h-6 text-gray-500" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold">{member.user.displayName}</h3>
+                                        <div className="flex items-center space-x-2">
+                                            <span className={`text-sm ${
+                                                member.role === 1 ? 'text-red-500' :
+                                                member.role === 2 ? 'text-blue-500' :
+                                                'text-gray-500'
+                                            }`}>
+                                                {getRoleName(member.role)}
+                                            </span>
+                                            <span className="text-gray-400">•</span>
+                                            <span className="text-sm text-gray-500">
+                                                Tham gia {member.createdAt}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    {isOwner && member.role !== 1 && (
+                                        <>
+                                            {renderRoleDropdown(member)}
+                                            <button 
+                                                onClick={() => handleRemoveMember(member._id)}
+                                                className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                                                title="Xóa khỏi nhóm"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center text-gray-500 py-8">
+                    Chưa có thành viên nào.
+                </div>
+            )}
+        </div>
+    );
+
     const renderContent = () => {
         switch (activeTab) {
             case 'posts':
@@ -152,91 +301,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     </div>
                 );
             case 'members':
-                return (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-semibold">Thành viên nhóm</h2>
-                            <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                                <UserPlus className="w-5 h-5 mr-2 inline-block" />
-                                Thêm thành viên
-                            </button>
-                        </div>
-                        {isMembersLoading ? (
-                            <div className="flex justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                            </div>
-                        ) : members.length > 0 ? (
-                            <div className="bg-white rounded-lg shadow divide-y">
-                                {members.map(member => (
-                                    <div key={member._id} className="p-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-4">
-                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
-                                                    {member.user.avatarUrl ? (
-                                                        <img 
-                                                            src={member.user.avatarUrl} 
-                                                            alt={member.user.displayName}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-gray-300">
-                                                            <Users className="w-6 h-6 text-gray-500" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-semibold">{member.user.displayName}</h3>
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className={`text-sm ${
-                                                            member.role === 1 ? 'text-red-500' :
-                                                            member.role === 2 ? 'text-blue-500' :
-                                                            'text-gray-500'
-                                                        }`}>
-                                                            {getRoleName(member.role)}
-                                                        </span>
-                                                        <span className="text-gray-400">•</span>
-                                                        <span className="text-sm text-gray-500">
-                                                            Tham gia {member.createdAt}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                {member.role !== 1 && (
-                                                    <>
-                                                        <button 
-                                                            onClick={() => handleUpdateRole(member._id, member.role === 2 ? 3 : 2)}
-                                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                                                            title={member.role === 2 ? "Hạ cấp xuống thành viên" : "Thăng cấp lên quản trị viên"}
-                                                        >
-                                                            <Shield className="w-5 h-5" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleRemoveMember(member._id)}
-                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                                                            title="Xóa khỏi nhóm"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                        </button>
-                                                    </>
-                                                )}
-                                                <button className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
-                                                    <MoreVertical className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center text-gray-500 py-8">
-                                Chưa có thành viên nào.
-                            </div>
-                        )}
-                    </div>
-                );
+                return renderMembersContent();
             case 'pending-posts':
                 return (
                     <div className="space-y-4">
@@ -273,39 +338,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     </div>
                 );
             case 'pending-members':
-                return (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-semibold">Yêu cầu tham gia</h2>
-                            <div className="flex space-x-2">
-                                <button className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
-                                    Duyệt tất cả
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-lg shadow">
-                            <div className="p-4 border-b">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="w-12 h-12 rounded-full bg-gray-200"></div>
-                                        <div>
-                                            <h3 className="font-semibold">Nguyễn Văn B</h3>
-                                            <p className="text-gray-500 text-sm">Yêu cầu tham gia 1 ngày trước</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                                            Chấp nhận
-                                        </button>
-                                        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
-                                            Từ chối
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
+                return <GroupJoinRequests groupId={groupId} />;
             default:
                 return (
                     <div className="text-center text-gray-500 py-8">
@@ -405,6 +438,17 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     {renderContent()}
                 </div>
             </div>
+            <ConfimationDialog
+                isVisible={isDialogVisible}
+                title="Xác nhận thay đổi vai trò"
+                message={`Bạn có chắc chắn muốn thay đổi vai trò của ${selectedMember?.user.displayName} thành ${
+                    newRole === 2 ? 'Quản trị viên' : 'Thành viên'
+                }?`}
+                onConfirm={confirmRoleChange}
+                confirmText="Xác nhận"
+                onCancel={hideDialog}
+                color="blue"
+            />
         </div>
     );
 };

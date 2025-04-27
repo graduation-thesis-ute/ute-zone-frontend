@@ -9,8 +9,18 @@ interface Group {
     description: string;
     memberCount: number;
     postCount: number;
-    coverImage?: string;
-    avatar?: string;
+    coverUrl?: string;
+    avatarUrl?: string;
+    isOwner: number;
+    privacy: number;
+    status: number;
+    members: number;
+    createdAt: string;
+    user: {
+        _id: string;
+        displayName: string;
+        avatarUrl?: string;
+    };
 }
 
 interface GroupResponse {
@@ -33,10 +43,11 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
         const fetchMyGroups = async () => {
             try {
                 setIsLoading(true);
-                const response = await get('/v1/group/list', { isOwner: 1 });
+                const response = await get('/v1/group/list?isOwner=1');
                 const data: GroupResponse = response.data;
-                const myGroups = data.content || [];
+                const myGroups = data.content.filter(group => group.isOwner === 1) || [];
                 setGroups(myGroups);
+                console.log("myGroups", myGroups);
             } catch (error) {
                 console.error('Error fetching my groups:', error);
                 setGroups([]);
@@ -101,11 +112,11 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
                             id={group._id}
                             name={group.name}
                             description={group.description}
-                            memberCount={group.memberCount}
+                            memberCount={group.members}
                             postCount={group.postCount}
                             type="my"
-                            coverImage={group.coverImage}
-                            avatar={group.avatar}
+                            coverImage={group.coverUrl}
+                            avatar={group.avatarUrl}
                             onGroupClick={onGroupClick}
                             onSettingsClick={handleSettingsClick}
                         />
