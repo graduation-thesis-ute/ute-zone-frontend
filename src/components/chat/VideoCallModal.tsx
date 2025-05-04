@@ -145,8 +145,8 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   };
 
   // Get display names
-  const displayReceiverName = receiverName;
-  const displayCallerName = callerName;
+  // const displayReceiverName = receiverName;
+  // const displayCallerName = callerName;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
@@ -181,7 +181,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
         />
 
         {/* Remote user info - visible when video is off or at start */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-10">
+        {/* <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-10">
           {receiverAvatar && (
             <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-2 border-2 border-blue-400 shadow-lg">
               <img
@@ -191,7 +191,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
               />
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Local Video with border indicator for mic status */}
         <div
@@ -213,15 +213,13 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
               {callerAvatar ? (
                 <img
                   src={callerAvatar}
-                  alt={displayCallerName || "Caller"}
+                  alt={callerName || "Caller"}
                   className="w-16 h-16 rounded-full"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
                   <span className="text-white text-lg font-bold">
-                    {displayCallerName
-                      ? displayCallerName.charAt(0).toUpperCase()
-                      : ""}
+                    {callerName ? callerName.charAt(0).toUpperCase() : ""}
                   </span>
                 </div>
               )}
@@ -250,7 +248,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
         >
           <div className="flex items-center space-x-2">
             <Users size={16} className="text-blue-400" />
-            <p className="text-sm font-semibold">{displayReceiverName}</p>
+            <p className="text-sm font-semibold">{receiverName}</p>
           </div>
           <div className="flex items-center space-x-2 mt-1">
             <Timer size={16} className="text-green-400" />
@@ -313,7 +311,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
         </div>
 
         {/* Call quality indicator */}
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-1">
+        {/* <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-1">
           {[1, 2, 3, 4].map((bar) => (
             <div
               key={bar}
@@ -331,7 +329,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
               }}
             ></div>
           ))}
-        </div>
+        </div> */}
       </div>
     </div>
   );
