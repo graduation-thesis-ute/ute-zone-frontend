@@ -96,6 +96,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [callDuration, setCallDuration] = useState<number>(0);
+  const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
 
   const initializePeerConnection = (receiverId: string) => {
     const pc = new RTCPeerConnection({
@@ -342,6 +345,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsCalling(false);
         setIsVideoCallActive(true);
         await createOffer();
+        // Bắt đầu đếm thời gian cuộc gọi
+        setCallStartTime(new Date());
+        callDurationInterval.current = setInterval(() => {
+          setCallDuration((prev) => prev + 1);
+        }, 1000);
       }
     },
     onVideoCallRejected: () => {
@@ -623,7 +631,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     setRemoteStream(null);
     setIsVideoCallActive(false);
-    handleSendMessageForChat("Cuộc gọi video đã kết thúc.");
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    // Dừng interval đếm thời gian
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    setCallStartTime(null);
     // socketVideo?.emit("END_VIDEO_CALL", {
     //   conversationId: conversation._id,
     //   callerId: userCurrent?._id,
@@ -645,7 +664,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     setRemoteStream(null);
     setIsVideoCallActive(false);
-    handleSendMessageForChat("Cuộc gọi video đã kết thúc.");
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    // Dừng interval đếm thời gian
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    setCallStartTime(null);
     peerConnectionRef.current = null;
     console.log("Call ended by caller ChatWindow");
   };
@@ -668,7 +698,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     setRemoteStream(null);
     setIsVideoCallActive(false);
-    handleSendMessageForChat("Cuộc gọi video đã kết thúc.");
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    setCallStartTime(null);
     peerConnectionRef.current = null;
     console.log("Call ended by caller ChatWindow");
   };
@@ -731,6 +771,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     } finally {
       setIsSendingMessage(false);
     }
+  };
+
+  const formatCallDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   const handleSendMessageForChat = async (newMessage: string) => {

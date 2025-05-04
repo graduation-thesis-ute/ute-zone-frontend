@@ -61,9 +61,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             alt={conversation.name}
             className="rounded-full w-12 h-12 object-cover border-2 border-blue-100 shadow-sm"
           />
-          {isOnline && (
+          {/* {isOnline && (
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-          )}
+          )}*/}
         </div>
 
         <div className="ml-3">
@@ -89,10 +89,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
               <Info size={12} className="ml-1" />
             </button>
           )}
-
-          {!isGroup && isOnline && (
+          {/* {!isGroup && isOnline && (
             <p className="text-xs text-green-500 mt-0.5">Đang hoạt động</p>
-          )}
+          )} */}
         </div>
       </div>
 

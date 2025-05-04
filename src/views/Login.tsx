@@ -8,7 +8,7 @@ import { remoteUrl } from "../types/constant";
 import Button from "../components/Button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LoadingDialog } from "../components/Dialog";
-import UTELogo from "../assets/ute_logo.png";
+import UTELogo from "../assets/ute_logo_hcmute.png";
 import LoginPageLogo from "../assets/login-page.png";
 
 const Login = () => {
