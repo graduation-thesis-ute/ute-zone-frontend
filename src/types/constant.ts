@@ -3,7 +3,7 @@ const EmailPattern =
 
 const PhonePattern = /^0[1235789][0-9]{8}$/;
 
-const remoteUrl = "https://ute-zone-backend.onrender.com/";
+const remoteUrl = "https://ute-zone-backend.onrender.com";
 
 // const remoteUrl = "http://localhost:7979";
 
