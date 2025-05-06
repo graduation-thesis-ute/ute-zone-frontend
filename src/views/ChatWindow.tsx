@@ -5,8 +5,6 @@ import { useSocketVideoCall } from "../hooks/useSocketVideoCall";
 import {
   Message,
   Friends,
-  Conversation,
-  UserProfile,
   ChatWindowProps as ChatWindowPropsType,
   ConversationMembers,
 } from "../models/profile/chat";
