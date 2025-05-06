@@ -3,7 +3,7 @@ import {
   MessageCircle,
   FileText,
   Users,
-  Settings,
+
   User,
   LogOut,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import useDialog from "../hooks/useDialog";
 import ProfileModal from "../components/modal/ProfileModal";
 import EditProfileModal from "../components/modal/EditProfileModal";
 import { useProfile } from "../types/UserContext";
-import useFetch from "../hooks/useFetch";
+//import useFetch from "../hooks/useFetch";
 
 interface NavBarProps {
   setSelectedSection: (section: string) => void;
@@ -28,7 +28,7 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
   const navigate = useNavigate();
   const { isDialogVisible, showDialog, hideDialog } = useDialog();
   const {setProfile} = useProfile();
-  const { get } = useFetch();
+  //const { get } = useFetch();
   
   const handleProfileClick = () => {
     setProfileModalVisible(true);

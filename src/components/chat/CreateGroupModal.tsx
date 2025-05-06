@@ -16,7 +16,6 @@ interface CreateGroupModalProps {
 
 const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   onClose,
-  userCurrent,
   handleConversationCreated,
 }) => {
   const [groupName, setGroupName] = useState("");

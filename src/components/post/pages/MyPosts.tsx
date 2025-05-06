@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import PostItem from "./PostItem";
 import { useLoading } from "../../../hooks/useLoading";
 import { remoteUrl } from "../../../types/constant";
 import { toast } from "react-toastify";
 import InputField from "../../InputField";
 import { Search, Loader2 } from "lucide-react";
-import { jwtDecode } from "jwt-decode";
+//import { jwtDecode } from "jwt-decode";
 import { LoadingDialog } from "../../Dialog";
 import CreatePost from "./CreatePost";
 import CreateStory from "../story/CreateStory";
@@ -13,7 +13,7 @@ import UpdatePost from "./UpdatePost";
 import { PostModel } from "../../../models/post/PostModel";
 import useFetch from "../../../hooks/useFetch";
 import CreatePostButton from "../button/CreatePostButton";
-import { Profile } from "../../../models/profile/Profile";
+//import { Profile } from "../../../models/profile/Profile";
 import { useProfile } from "../../../types/UserContext";
 
 const MyPosts = () => {

@@ -6,7 +6,6 @@ import {
   X,
   Check,
   Heart,
-  ImageIcon,
   Clock,
 } from "lucide-react";
 import UserIcon from "../../assets/user_icon.png";

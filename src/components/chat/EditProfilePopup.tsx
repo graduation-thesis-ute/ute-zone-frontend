@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
 import { Edit, Camera } from "lucide-react";
 import { CustomModal } from "../Dialog";
 import UserIcon from "../../assets/user_icon.png";

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { ImageIcon, X, Send, AlertCircle, Paperclip } from "lucide-react";
+import { ImageIcon, X, Send, AlertCircle } from "lucide-react";
 
 interface ChatInputProps {
   newMessage: string;

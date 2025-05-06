@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PostItem from './PostItem';
-import StoryViewer from '../story/StoryViewer';
-import { useLoading } from '../../../hooks/useLoading';
-import { remoteUrl } from '../../../types/constant';
-import { toast } from 'react-toastify';
+//import StoryViewer from '../story/StoryViewer';
+//import { useLoading } from '../../../hooks/useLoading';
+//import { remoteUrl } from '../../../types/constant';
+//import { toast } from 'react-toastify';
 import InputField from '../../InputField';
 import { Search } from 'lucide-react';
 import { LoadingDialog } from '../../Dialog';
@@ -13,10 +13,10 @@ import useFetch from '../../../hooks/useFetch';
 const CommunityPosts = () => {
   const [posts, setPosts] = useState<PostModel[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const { isLoading, showLoading, hideLoading } = useLoading();
+  //const { isLoading, showLoading, hideLoading } = useLoading();
   const {get, loading} = useFetch();
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  //const [hasMore, setHasMore] = useState(true);
+  //const [isLoadingMore, setIsLoadingMore] = useState(false);
 
 
   const itemsPerPage = 10;
@@ -41,23 +41,23 @@ const fetchPosts = async (pageNumber: number) => {
       setPosts((prevPosts) => [...prevPosts, ...data]);
     }
 
-    setHasMore(data.length > 0);
+    //setHasMore(data.length > 0);
   } catch (error: any) {
     console.error("Lỗi chi tiết:", error); 
     
   } finally {
-    setIsLoadingMore(false);
+    //setIsLoadingMore(false);
   }
 };
 
 
-  const handleDeletePost = async (postId: string) => {
+  const handleDeletePost = async () => {
     // Add delete functionality here
     // After successful deletion, refresh the posts
     fetchPosts(0);
   };
 
-  const handleEditPost = async (postId: string) => {
+  const handleEditPost = async () => {
     // Add edit functionality here
     // After successful edit, refresh the posts
     fetchPosts(0);
@@ -91,8 +91,8 @@ const fetchPosts = async (pageNumber: number) => {
               <PostItem
                 key={post._id}
                 postItem={post}
-                onEdit={() => handleEditPost(post._id)}
-                onDelete={() => handleDeletePost(post._id)}
+                onEdit={() => handleEditPost()}
+                onDelete={() => handleDeletePost()}
 
               />
             ))

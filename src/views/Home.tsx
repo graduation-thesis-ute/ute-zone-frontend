@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import  { useState, useEffect, useCallback, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { LoadingDialog } from "../components/Dialog";
 import ChatList from "../components/chat/ChatList";
@@ -20,9 +20,9 @@ import { remoteUrl } from "../types/constant";
 import { Menu, X } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
-import { useProfile } from "../types/UserContext";
+//import { useProfile } from "../types/UserContext";
 import VideoCallModal from "../components/chat/VideoCallModal";
-import { encrypt } from "../types/utils";
+//import { encrypt } from "../types/utils";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import ringtone from "/receiver-ringtone.mp3";
 import { toast } from "react-toastify";
@@ -42,8 +42,8 @@ const Home = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { get, post } = useFetch();
+  const [isLoading] = useState(false);
+  const { get } = useFetch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
@@ -60,7 +60,7 @@ const Home = () => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
-  const { profile, setProfile } = useProfile();
+ // const { profile, setProfile } = useProfile();
 
   const initializePeerConnection = () => {
     const pc = new RTCPeerConnection({
@@ -126,11 +126,11 @@ const Home = () => {
     try {
       const response = await get("/v1/user/profile");
       setUserCurrent(response.data);
-      setProfile(response.data);
+      //setProfile(response.data);
     } catch (error) {
       console.error("Error getting user id:", error);
     }
-  }, [get, setProfile]);
+  }, [get]);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -188,21 +188,21 @@ const Home = () => {
   }, [fetchConversations, selectedSection, userCurrent]);
 
   const handleNewMessageHome = useCallback(
-    (messageId: string) => {
+    () => {
       handleMessageChange();
     },
     [handleMessageChange]
   );
 
   const handleUpdateMessageHome = useCallback(
-    (messageId: string) => {
+    () => {
       handleMessageChange();
     },
     [handleMessageChange]
   );
 
   const handleDeleteMessageHome = useCallback(
-    (messageId: string) => {
+    () => {
       handleMessageChange();
     },
     [handleMessageChange]

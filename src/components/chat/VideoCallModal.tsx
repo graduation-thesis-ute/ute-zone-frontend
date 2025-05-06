@@ -29,7 +29,6 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   callerName,
   callerAvatar,
   receiverName,
-  receiverAvatar,
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -39,7 +38,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const [isConnectionStrong, setIsConnectionStrong] = useState(true);
+  //const [isConnectionStrong, setIsConnectionStrong] = useState(true);
   const [showControlsTimer, setShowControlsTimer] =
     useState<NodeJS.Timeout | null>(null);
   const [areControlsVisible, setAreControlsVisible] = useState(true);
@@ -77,13 +76,13 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }, 1000);
 
     // Simulate network condition changes
-    const networkTimer = setInterval(() => {
-      setIsConnectionStrong(Math.random() > 0.2); // 80% chance of good connection
-    }, 8000);
+    // const networkTimer = setInterval(() => {
+    //   setIsConnectionStrong(Math.random() > 0.2); // 80% chance of good connection
+    // }, 8000);
 
     return () => {
       clearInterval(timer);
-      clearInterval(networkTimer);
+      //clearInterval(networkTimer);
     };
   }, []);
 

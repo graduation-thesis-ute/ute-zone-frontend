@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BellIcon } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 

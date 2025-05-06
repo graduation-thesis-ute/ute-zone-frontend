@@ -3,7 +3,6 @@ import ChatItem from "./ChatItem";
 import { Conversation, UserProfile } from "../../models/profile/chat";
 import {
   Search,
-  Users,
   MessageSquare,
   PlusCircle,
   Loader2,

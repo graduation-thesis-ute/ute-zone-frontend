@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useLoading } from '../../hooks/useLoading';
 import { remoteUrl } from '../../types/constant';
 import { toast } from 'react-toastify';
@@ -29,10 +29,10 @@ const FriendsList = () => {
   const { get,put } = useFetch();
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const [activeSection, setActiveSection] = useState("messages");
+ // const [activeSection, setActiveSection] = useState("messages");
   const [profileData, setProfileData] = useState<Profile | null>(null);
   
-  const defaultAvatar = 'https://via.placeholder.com/150';
+  //const defaultAvatar = 'https://via.placeholder.com/150';
 
   useEffect(() => {
     fetchFriends();
@@ -161,10 +161,10 @@ const FriendsList = () => {
   const updateFriendsList = async () => {
     await fetchFriends();
   };
-  const handleProfileClick = () => {
-    setProfileModalVisible(true);
-    setActiveSection("profile");
-  };
+  // const handleProfileClick = () => {
+  //   setProfileModalVisible(true);
+  //   setActiveSection("profile");
+  // };
   const handleFollowToggle = async (friendshipId: string, isFollowed: number) => {
     showLoading();
     try {

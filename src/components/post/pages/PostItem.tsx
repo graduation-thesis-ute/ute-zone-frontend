@@ -9,9 +9,9 @@ import {
 import { PostModel } from "../../../models/post/PostModel";
 import PostDetail from "./PostDetail";
 import { remoteUrl } from "../../../types/constant";
-import { Profile } from "../../../models/profile/Profile";
-import useFetch from "../../../hooks/useFetch";
-import { toast } from "react-toastify";
+//import { Profile } from "../../../models/profile/Profile";
+//import useFetch from "../../../hooks/useFetch";
+//import { toast } from "react-toastify";
 
 const PostItem = ({ postItem, onEdit, onDelete } :  
   { postItem: PostModel;
@@ -24,11 +24,11 @@ const PostItem = ({ postItem, onEdit, onDelete } :
   const [showModal, setShowModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false); 
   const [isLiking, setIsLiking] = useState(false); 
-  const {get, post, loading} = useFetch();
+  //const {get, post, loading} = useFetch();
   
-  const toggleMenu = () => {
-    setShowMenu(!showMenu);
-  };
+  // const toggleMenu = () => {
+  //   setShowMenu(!showMenu);
+  // };
  
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,9 +61,9 @@ const PostItem = ({ postItem, onEdit, onDelete } :
   setShowModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
+  // const handleCloseModal = () => {
+  //   setShowModal(false);
+  // };
   const getStatusLabel = (status: number) => {
     switch (status) {
       case 1:

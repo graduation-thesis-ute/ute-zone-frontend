@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play, Plus, Trash2 } from 'lucide-react';
 import { StoryModel } from '../../../models/story/StoryModel';
 import { remoteUrl } from '../../../types/constant';
@@ -21,7 +21,7 @@ const StoryViewer = () => {
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+ //const [isTransitioning, setIsTransitioning] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { isLoading, showLoading, hideLoading } = useLoading();
   const [isCreateVisible, setCreateVisible] = useState(false);
@@ -145,12 +145,12 @@ useEffect(() => {
   };
 
   const handleNextStory = async () => {
-    setIsTransitioning(true);
+    //setIsTransitioning(true);
     setProgress(0); // Reset progress ngay lập tức
   
     if (!currentStory?.nextStory) {
       setIsPopupVisible(false); // Đóng viewer nếu không có story tiếp theo
-      setIsTransitioning(false);
+      //setIsTransitioning(false);
       return;
     }
   
@@ -158,7 +158,7 @@ useEffect(() => {
     if (nextStory) {
       setCurrentStory(nextStory); // Đặt story mới
       setIsPaused(false); // Tiếp tục nếu đang tạm dừng
-      setIsTransitioning(false);
+      //setIsTransitioning(false);
     }
   };
   
@@ -168,14 +168,14 @@ useEffect(() => {
       return;
     }
   
-    setIsTransitioning(true);
+   // setIsTransitioning(true);
     setProgress(0); 
   
     const prevStory = await fetchStoryById(currentStory.previousStory);
     if (prevStory) {
       setCurrentStory(prevStory); 
       setIsPaused(false); 
-      setIsTransitioning(false);
+     // setIsTransitioning(false);
     }
   };
   
