@@ -1,11 +1,11 @@
-import  { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { LoadingDialog } from "../components/Dialog";
 import ChatList from "../components/chat/ChatList";
 import ChatWindow from "../views/ChatWindow";
 import WelcomeIcon from "../assets/welcome.png";
 import useFetch from "../hooks/useFetch";
-import { Conversation, UserProfile } from "../models/profile/chat";
+import { Conversation, UserProfile, Message } from "../models/profile/chat";
 import FriendListItem from "../components/friend/FriendListItem";
 import FriendsList from "../components/friend/FriendsList";
 import GroupList from "../components/friend/GroupList";
@@ -26,6 +26,7 @@ import VideoCallModal from "../components/chat/VideoCallModal";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import ringtone from "/receiver-ringtone.mp3";
 import { toast } from "react-toastify";
+import { eventBus } from "../types/EventBus";
 
 export interface CallData {
   callerId: string;
@@ -43,9 +44,16 @@ const Home = () => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [isLoading] = useState(false);
-  const { get } = useFetch();
+  const { get, put } = useFetch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
+  const [loadedMessages, setLoadedMessages] = useState<
+    Record<string, Message[]>
+  >(() => {
+    // Load cached messages from localStorage on initial render
+    const cached = localStorage.getItem("chatMessages");
+    return cached ? JSON.parse(cached) : {};
+  });
 
   const [isInfoComingCall, setIsInfoComingCall] = useState<CallData | null>(
     null
@@ -57,10 +65,68 @@ const Home = () => {
   const [isComingCall, setIsComingCall] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cache management functions
+  const clearConversationCache = useCallback((conversationId: string) => {
+    console.log(`Clearing cache for conversation ${conversationId}`);
+    setLoadedMessages((prev) => {
+      const newCache = { ...prev };
+      delete newCache[conversationId];
+      localStorage.setItem("chatMessages", JSON.stringify(newCache));
+      return newCache;
+    });
+  }, []);
+
+  const clearAllCache = useCallback(() => {
+    console.log("Clearing all cache");
+    setLoadedMessages({});
+    localStorage.removeItem("chatMessages");
+  }, []);
+
+  const updateMessageCache = useCallback(
+    (conversationId: string, messages: Message[]) => {
+      setLoadedMessages((prev) => {
+        const newCache = {
+          ...prev,
+          [conversationId]: messages,
+        };
+        localStorage.setItem("chatMessages", JSON.stringify(newCache));
+        return newCache;
+      });
+    },
+    []
+  );
+
+  // Listen to events
+  useEffect(() => {
+    const handleLogout = () => {
+      clearAllCache();
+    };
+
+    const handleConversationUpdate = (conversationId: string) => {
+      clearConversationCache(conversationId);
+    };
+
+    const handleLeaveGroup = (conversationId: string) => {
+      clearConversationCache(conversationId);
+    };
+
+    // Subscribe to events
+    eventBus.on("logout", handleLogout);
+    eventBus.on("conversationUpdate", handleConversationUpdate);
+    eventBus.on("leaveGroup", handleLeaveGroup);
+
+    // Cleanup
+    return () => {
+      eventBus.off("logout", handleLogout);
+      eventBus.off("conversationUpdate", handleConversationUpdate);
+      eventBus.off("leaveGroup", handleLeaveGroup);
+    };
+  }, [clearAllCache, clearConversationCache]);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
- // const { profile, setProfile } = useProfile();
+  // const { profile, setProfile } = useProfile();
 
   const initializePeerConnection = () => {
     const pc = new RTCPeerConnection({
@@ -106,13 +172,18 @@ const Home = () => {
         `/v1/conversation/get/${updatedConversation._id}`
       );
       setSelectedConversation(response.data);
+      // Clear cache for the updated conversation
+      clearConversationCache(updatedConversation._id);
     },
-    [get]
+    [get, clearConversationCache]
   );
 
   const handleLeaveGroup = useCallback(() => {
+    if (selectedConversation) {
+      clearConversationCache(selectedConversation._id);
+    }
     setSelectedConversation(null);
-  }, []);
+  }, [selectedConversation, clearConversationCache]);
 
   const handleFowardToConversation = useCallback(
     async (idConversation: string) => {
@@ -184,29 +255,34 @@ const Home = () => {
   const handleMessageChange = useCallback(() => {
     if (selectedSection === "messages" && userCurrent) {
       fetchConversations();
+      console.log("handle fetch conversations");
     }
   }, [fetchConversations, selectedSection, userCurrent]);
 
-  const handleNewMessageHome = useCallback(
-    () => {
-      handleMessageChange();
-    },
-    [handleMessageChange]
-  );
+  // Clear cache when new message is received
+  const handleNewMessageHome = useCallback(() => {
+    handleMessageChange();
+    // Clear cache for the conversation that received new message
+    if (selectedConversation) {
+      clearConversationCache(selectedConversation._id);
+    }
+  }, [handleMessageChange, selectedConversation, clearConversationCache]);
 
-  const handleUpdateMessageHome = useCallback(
-    () => {
-      handleMessageChange();
-    },
-    [handleMessageChange]
-  );
+  // Clear cache when message is updated
+  const handleUpdateMessageHome = useCallback(() => {
+    handleMessageChange();
+    if (selectedConversation) {
+      clearConversationCache(selectedConversation._id);
+    }
+  }, [handleMessageChange, selectedConversation, clearConversationCache]);
 
-  const handleDeleteMessageHome = useCallback(
-    () => {
-      handleMessageChange();
-    },
-    [handleMessageChange]
-  );
+  // Clear cache when message is deleted
+  const handleDeleteMessageHome = useCallback(() => {
+    handleMessageChange();
+    if (selectedConversation) {
+      clearConversationCache(selectedConversation._id);
+    }
+  }, [handleMessageChange, selectedConversation, clearConversationCache]);
 
   const handleUpdateConversation = useCallback(() => {}, []);
 
@@ -393,6 +469,14 @@ const Home = () => {
     console.log("Call ended by caller HOME.");
   };
 
+  // Add cleanup function to clear cache when component unmounts
+  useEffect(() => {
+    return () => {
+      // Optionally clear all cache when component unmounts
+      // clearAllCache();
+    };
+  }, [clearAllCache]);
+
   return (
     <div className="flex h-screen">
       <NavBar setSelectedSection={setSelectedSection} />
@@ -429,9 +513,18 @@ const Home = () => {
         {selectedSection === "messages" ? (
           <ChatList
             conversations={conversations}
-            onSelectConversation={(conversation) => {
+            onSelectConversation={async (conversation) => {
               setSelectedConversation(conversation);
               setIsSidebarOpen(false);
+
+              // Gọi API update lastReadMessage
+              try {
+                await put(
+                  `/v1/conversation/update-last-read/${conversation._id}`
+                );
+              } catch (error) {
+                console.error("Error updating last read message:", error);
+              }
             }}
             userCurrent={userCurrent}
             handleConversationCreated={handleMessageChange}
@@ -461,6 +554,8 @@ const Home = () => {
               handleLeaveGroupUpdate={handleLeaveGroup}
               handleConversationDeleted={handleMessageChange}
               onFowardMessage={handleFowardToConversation}
+              loadedMessages={loadedMessages[selectedConversation._id]}
+              onUpdateMessageCache={updateMessageCache}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full space-y-4 bg-gray-100 p-6 rounded-lg shadow-lg">

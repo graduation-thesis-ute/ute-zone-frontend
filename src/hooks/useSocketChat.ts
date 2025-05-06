@@ -68,6 +68,11 @@ export const useSocketChat = ({
       onHandleUpdateConversation(conversationId);
     });
 
+    socket.on("UPDATE_LAST_READ", (data) => {
+      console.log("UPDATE_LAST_READ socket FE", data);
+      if (onConversationUpdate) onConversationUpdate();
+    });
+
     socketRef.current = socket;
 
     return () => {

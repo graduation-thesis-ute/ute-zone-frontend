@@ -5,7 +5,9 @@ import { useSocketVideoCall } from "../hooks/useSocketVideoCall";
 import {
   Message,
   Friends,
-  ChatWindowProps,
+  Conversation,
+  UserProfile,
+  ChatWindowProps as ChatWindowPropsType,
   ConversationMembers,
 } from "../models/profile/chat";
 import { toast } from "react-toastify";
@@ -30,6 +32,12 @@ import UserInfoPopup from "../components/chat/UserInfoPopup";
 import VideoCallModal from "../components/chat/VideoCallModal";
 import CallingPopup from "../components/chat/CallingPopup";
 import ringtone from "/caller-ringtone.mp3";
+import { eventBus } from "../types/EventBus";
+
+export interface ChatWindowProps extends ChatWindowPropsType {
+  loadedMessages?: Message[];
+  onUpdateMessageCache?: (conversationId: string, messages: Message[]) => void;
+}
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   conversation,
@@ -39,6 +47,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   handleLeaveGroupUpdate,
   handleConversationDeleted,
   onFowardMessage,
+  loadedMessages,
+  onUpdateMessageCache,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingUpdate, setLoadingUpdate] = useState<boolean>(false);
@@ -205,6 +215,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       handleConversationDeleted();
       setIsManageMembersModalOpen(false);
       handleLeaveGroupUpdate(conversation);
+      // Emit event for cache clearing
+      eventBus.emit("leaveGroup", conversation._id);
     } catch (error) {
       console.error("Error leaving group:", error);
     } finally {
@@ -240,6 +252,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsCanMessage(Number(conversation.canMessage));
         setIsCanAddMember(Number(conversation.canAddMember));
 
+        console.log(`Checking cache for conversation ${conversation._id}:`, {
+          hasCache: !!loadedMessages,
+          cachedMessageCount: loadedMessages?.length || 0,
+          pageNumber,
+        });
+
+        // If we have cached messages and it's the first page, use them
+        if (pageNumber === 0 && loadedMessages) {
+          console.log(
+            `Using cached messages for conversation ${conversation._id}`
+          );
+          setMessages(loadedMessages);
+          setIsScrollToBottom(true);
+          return;
+        }
+
+        console.log(
+          `Loading messages from server for conversation ${conversation._id}`
+        );
         const response = await get("/v1/message/list", {
           page: pageNumber,
           size,
@@ -248,8 +279,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         const newMessages = response.data.content;
         if (pageNumber === 0) {
-          setMessages(newMessages.reverse());
+          const messagesToSet = newMessages.reverse();
+          console.log(
+            `Caching ${messagesToSet.length} messages for conversation ${conversation._id}`
+          );
+          setMessages(messagesToSet);
           setIsScrollToBottom(true);
+          // Cache the messages
+          if (onUpdateMessageCache) {
+            onUpdateMessageCache(conversation._id, messagesToSet);
+          }
         } else {
           const newMessagesReverse = newMessages.reverse();
           setMessages((prev) => [...newMessagesReverse, ...prev]);
@@ -262,7 +301,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsLoadingMessages(false);
       }
     },
-    [conversation._id, get]
+    [conversation._id, get, loadedMessages, onUpdateMessageCache]
   );
 
   const handleNewMessage = useCallback(
@@ -273,11 +312,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setMessages((prevMessages) => [...prevMessages, newMessage]);
         setIsScrollToBottom(true);
         onMessageChange();
+        // Update cache with new message instead of clearing it
+        if (onUpdateMessageCache) {
+          onUpdateMessageCache(conversation._id, [...messages, newMessage]);
+        }
       } catch (error) {
         console.error("Error fetching new message:", error);
       }
     },
-    [get, onMessageChange]
+    [get, onMessageChange, conversation._id, messages, onUpdateMessageCache]
   );
 
   const handleUpdateMessageSocket = useCallback(
@@ -291,11 +334,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )
         );
         onMessageChange();
+        // Update cache with updated message instead of clearing it
+        if (onUpdateMessageCache) {
+          const updatedMessages = messages.map((msg) =>
+            msg._id === updatedMessage._id ? updatedMessage : msg
+          );
+          onUpdateMessageCache(conversation._id, updatedMessages);
+        }
       } catch (error) {
         console.error("Error updating message:", error);
       }
     },
-    [get, onMessageChange]
+    [get, onMessageChange, conversation._id, messages, onUpdateMessageCache]
   );
 
   const handleDeleteMessageSocket = useCallback(
@@ -304,8 +354,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         prevMessages.filter((msg) => msg._id !== messageId)
       );
       onMessageChange();
+      // Update cache with deleted message instead of clearing it
+      if (onUpdateMessageCache) {
+        const updatedMessages = messages.filter((msg) => msg._id !== messageId);
+        onUpdateMessageCache(conversation._id, updatedMessages);
+      }
     },
-    [onMessageChange]
+    [onMessageChange, conversation._id, messages, onUpdateMessageCache]
   );
 
   const handleUpdateConversationSocket = useCallback(
