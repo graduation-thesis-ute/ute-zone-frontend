@@ -101,7 +101,7 @@ export const useSocketChat = ({
     return cleanup;
   }, [initializeSocket]);
 
-  return socketRef.current; // Trả về socket instance
+  return socketRef.current;
 };
 
 export default useSocketChat;

@@ -8,7 +8,6 @@ import useDialog from "../hooks/useDialog";
 import ProfileModal from "../components/modal/ProfileModal";
 import EditProfileModal from "../components/modal/EditProfileModal";
 import { useProfile } from "../types/UserContext";
-import { eventBus } from "../types/EventBus";
 //import useFetch from "../hooks/useFetch";
 
 interface NavBarProps {
@@ -41,7 +40,6 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
   const onConfirmLogout = () => {
     localStorage.removeItem("accessToken");
     setProfile(null);
-    eventBus.emit("logout");
     navigate("/");
     window.location.reload();
   };
