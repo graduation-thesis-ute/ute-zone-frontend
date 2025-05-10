@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { Image, SmileIcon, X } from 'lucide-react';
 
 const CreatePostButton = ({

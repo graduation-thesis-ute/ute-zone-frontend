@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CommentModel } from '../../../models/comment/CommentModel';
 import ChildComments from './ChildComments';
 import useFetch from '../../../hooks/useFetch';
@@ -27,9 +27,9 @@ const CommentItem = ({
   ) => Promise<{ hasMore: boolean; totalRemaining: number }>;
 }) => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [newReply, setNewReply] = useState('');
+ //const [newReply, setNewReply] = useState('');
   const [selectedReplyImage, setSelectedReplyImage] = useState<File | null>(null);
-  const { get, post, del, loading } = useFetch();
+  const { post, del, loading } = useFetch();
   const [comment1, setComment] = useState<CommentModel>(comment);
   const [isLiking, setIsLiking] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -42,21 +42,21 @@ const CommentItem = ({
   const [isReplyLoading, setIsReplyLoading] = useState(false);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
-  const [isRepliesVisible, setIsRepliesVisible] = useState(false);
-  const [repliesVisible, setRepliesVisible] = useState(false);
-  const [remainingReplies, setRemainingReplies] = useState(comment.totalChildren || 0);
+  //const [isRepliesVisible, setIsRepliesVisible] = useState(false);
+  //const [repliesVisible, setRepliesVisible] = useState(false);
+  //const [remainingReplies, setRemainingReplies] = useState(comment.totalChildren || 0);
   
-  const handleLoadMoreReplies = async () => {
-    if (!onLoadMore || remainingReplies === 0) return;
+  // const handleLoadMoreReplies = async () => {
+  //   if (!onLoadMore || remainingReplies === 0) return;
 
-    const currentPage = Math.ceil((childComments?.length || 0) / 5); // Assuming 5 replies per page
-    const result = await onLoadMore(comment._id, currentPage);
+  //   const currentPage = Math.ceil((childComments?.length || 0) / 5); // Assuming 5 replies per page
+  //   const result = await onLoadMore(comment._id, currentPage);
 
-    if (result) {
-      setRemainingReplies(result.totalRemaining); // Cập nhật số phản hồi còn lại
-      setRepliesVisible(true);
-    }
-  };
+  //   if (result) {
+  //     setRemainingReplies(result.totalRemaining); // Cập nhật số phản hồi còn lại
+  //     setRepliesVisible(true);
+  //   }
+  // };
 
   const handleReplySubmit = async (text: string, parentId: string) => {
     if (!text.trim() && !selectedReplyImage) {
@@ -91,7 +91,7 @@ const CommentItem = ({
       const data = await response.json();
       console.log('Phản hồi đã gửi thành công:', data);
   
-      setNewReply(''); // Reset trạng thái
+    //  setNewReply(''); // Reset trạng thái
       setSelectedReplyImage(null);
       setReplyTo(null);
     } catch (error) {

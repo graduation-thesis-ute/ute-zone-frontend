@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { XCircle, Heart, MessageCircle, Share2, MoreHorizontal, ChevronLeft, ChevronRight, Send, Image as IconImage } from 'lucide-react';
-import { Profile } from '../../../models/profile/Profile';
+import { XCircle, Heart, ChevronLeft, ChevronRight, Send, Image as IconImage } from 'lucide-react';
+//import { Profile } from '../../../models/profile/Profile';
 import CommentsSection from '../comment/CommentsSection';
 import { toast } from 'react-toastify';
 import { remoteUrl } from '../../../types/constant';
@@ -8,7 +8,7 @@ import { uploadImage } from '../../../types/utils';
 import useFetch from '../../../hooks/useFetch';
 import { useProfile } from '../../../types/UserContext';
 import { LoadingDialog } from '../../Dialog';
-import { CommentModel } from '../../../models/comment/CommentModel';
+//import { CommentModel } from '../../../models/comment/CommentModel';
 
 
 const PostDetail= ({
@@ -16,17 +16,17 @@ const PostDetail= ({
   onClose
 }: any) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
+  //const [isLiked, setIsLiked] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const {get, post} = useFetch();
   const {profile} = useProfile();
   const [isLoading, setIsLoading] = useState(true);
-  const [comments, setComments] = useState<CommentModel[]>([]);
+  //const [comments, setComments] = useState<CommentModel[]>([]);
   // const [totalComments, setTotalComments] = useState(postItem.totalComments);
   // const [totalReactions, setTotalReactions] = useState(postItem.totalReactions);
   const [totalComments, setTotalComments] = useState(postItem?.totalComments || 0);
-  const [totalReactions, setTotalReactions] = useState(postItem?.totalReactions || 0);
+  //const [totalReactions, setTotalReactions] = useState(postItem?.totalReactions || 0);
   useEffect(() => {
    
     const loadPostDetails = async () => {
@@ -117,7 +117,7 @@ const PostDetail= ({
       setIsLoading(true); 
       const response = await get('/v1/comment/list', { post: postItem._id });
       if (response.result) {
-        setComments(response.data.content); 
+        //setComments(response.data.content); 
         console.log("commet", response.data.totalElements)
         setTotalComments(response.data.totalElements); 
       }

@@ -33,16 +33,11 @@ interface AddFriendProps {
 
 const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, updateFriendsList }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
+ // const [users, setUsers] = useState<User[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
-  const [friendships2, setFriendships2] = useState<Friendship[]>([]);
-  const [friendships3, setFriendships3] = useState<Friendship[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const { isLoading, showLoading, hideLoading } = useLoading();
-  const { get , loading} = useFetch();
-  const [currentPage, setCurrentPage] = useState(0); // Trang hiện tại
-  const [hasMore, setHasMore] = useState(true); // Kiểm tra còn dữ liệu không
-  const [isFetching, setIsFetching] = useState(false); // Trạng thái tải dữ liệu
+  const { get } = useFetch();
 
   const getUserIdFromToken = () => {
     const token = localStorage.getItem('accessToken');
@@ -91,20 +86,20 @@ const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, updateFriendsLis
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      showLoading(); // Hiển thị trạng thái tải
-      const response = await get(`/v1/user/list?&isPaged=0`); // API trả về toàn bộ user
-      const allUsers = response.data.content || [];
-      setUsers(allUsers); // Lưu toàn bộ user vào state
-      setSearchResults(allUsers); // Hiển thị mặc định toàn bộ user
-    } catch (error) {
-      console.error("Lỗi khi tải danh sách user:", error);
-      toast.error("Đã xảy ra lỗi khi lấy danh sách người dùng.");
-    } finally {
-      hideLoading(); // Ẩn trạng thái tải
-    }
-  };
+  // const fetchUsers = async () => {
+  //   try {
+  //     showLoading(); // Hiển thị trạng thái tải
+  //     const response = await get(`/v1/user/list?&isPaged=0`); // API trả về toàn bộ user
+  //     const allUsers = response.data.content || [];
+  //     setUsers(allUsers); // Lưu toàn bộ user vào state
+  //     setSearchResults(allUsers); // Hiển thị mặc định toàn bộ user
+  //   } catch (error) {
+  //     console.error("Lỗi khi tải danh sách user:", error);
+  //     toast.error("Đã xảy ra lỗi khi lấy danh sách người dùng.");
+  //   } finally {
+  //     hideLoading(); // Ẩn trạng thái tải
+  //   }
+  // };
   
   const handleSearch = async () => {
     showLoading(); // Hiển thị trạng thái tải
@@ -120,7 +115,7 @@ const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, updateFriendsLis
       // Lọc user, loại bỏ user có id trùng với userId
       const filteredUsers = fetchedUsers.filter((user:any) => user._id !== userId);
       
-      setUsers(fetchedUsers); // Cập nhật state users (nếu cần tái sử dụng danh sách đầy đủ)
+      //setUsers(fetchedUsers); // Cập nhật state users (nếu cần tái sử dụng danh sách đầy đủ)
       setSearchResults(filteredUsers); // Hiển thị kết quả tìm kiếm (loại bỏ user có userId)
       
       console.log("Danh sách user sau tìm kiếm:", filteredUsers);
@@ -182,7 +177,7 @@ const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, updateFriendsLis
         return;
       }
 
-      const data = await response.json();
+      //const data = await response.json();
       toast.success('Lời mời kết bạn đã được gửi!');
 
       // Gọi hàm để lấy friendship mới
@@ -287,7 +282,7 @@ const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, updateFriendsLis
         return;
       }
   
-      const data = await response.json();
+      //const data = await response.json();
       toast.success('Đã từ chối lời mời kết bạn.');
   
       // Cập nhật lại danh sách lời mời kết bạn sau khi từ chối

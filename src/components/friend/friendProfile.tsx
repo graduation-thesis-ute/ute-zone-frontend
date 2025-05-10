@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { remoteUrl } from "../../types/constant";
-import { UserCircle, Phone, Mail, Book, X, Calendar } from "lucide-react";
-import { getDate } from "../../types/utils";
+import React from "react";
+
+import { Mail, Book, X, Calendar } from "lucide-react";
+
 import { Profile } from "../../models/profile/Profile";
 
 interface ProfileModalProps {
@@ -10,16 +10,6 @@ interface ProfileModalProps {
     profileData: Profile | null; 
   }
   
-
-interface UserProfile {
-  displayName: string;
-  email: string;
-  phone: string;
-  studentId: string;
-  bio: string;
-  avatarUrl: string;
-  birthDate: string;
-}
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isVisible, onClose, profileData }) => {
     if (!isVisible || !profileData) return null;

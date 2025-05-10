@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Smile, Send, Image } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+//import { Smile, Send, Image } from "lucide-react";
 import { CommentModel } from "../../../models/comment/CommentModel";
-import { remoteUrl } from "../../../types/constant";
+//import { remoteUrl } from "../../../types/constant";
 import { toast } from "react-toastify";
 import CommentItem from "../comment/CommentItem";
 import useFetch from "../../../hooks/useFetch";
 import { Oval } from "react-loader-spinner";
-import { uploadImage } from "../../../types/utils";
-import { Profile } from "../../../models/profile/Profile";
+//import { uploadImage } from "../../../types/utils";
+//import { Profile } from "../../../models/profile/Profile";
 
 interface CommentState {
   parentComments: CommentModel[];
@@ -21,14 +21,14 @@ interface LoadingStates {
   [key: string]: boolean;
 }
 
-const CommentsSection = ({ postId, totalComments, onRefresh }: any) => {
-  const [comments, setComments] = useState<CommentModel[]>([]);
-  const [visibleParents, setVisibleParents] = useState(5);
-  const [newComment, setNewComment] = useState("");
-  const { get, post } = useFetch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+const CommentsSection = ({ postId, onRefresh }: any) => {
+ // const [comments, setComments] = useState<CommentModel[]>([]);
+  //const [visibleParents, setVisibleParents] = useState(5);
+ // const [newComment, setNewComment] = useState("");
+  const { get } = useFetch();
+  //const [isLoading, setIsLoading] = useState(false);
+ // const [selectedImage, setSelectedImage] = useState<File | null>(null);
+ // const [profile, setProfile] = useState<Profile | null>(null);
   const [commentState, setCommentState] = useState<CommentState>({
     parentComments: [],
     childCommentsMap: {},
@@ -174,20 +174,20 @@ const CommentsSection = ({ postId, totalComments, onRefresh }: any) => {
     fetchComments,
   ]);
 
-  const handleImageUpload = async () => {
-    if (!selectedImage) return null;
+  // const handleImageUpload = async () => {
+  //   if (!selectedImage) return null;
 
-    const imageUrl = await uploadImage(selectedImage, post);
-    if (!imageUrl) {
-      toast.error("Không thể tải lên hình ảnh");
-    }
-    return imageUrl;
-  };
-  const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedImage(e.target.files[0]);
-    }
-  };
+  //   const imageUrl = await uploadImage(selectedImage, post);
+  //   if (!imageUrl) {
+  //     toast.error("Không thể tải lên hình ảnh");
+  //   }
+  //   return imageUrl;
+  // };
+  // const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     setSelectedImage(e.target.files[0]);
+  //   }
+  // };
 
   useEffect(() => {
     fetchComments(0);

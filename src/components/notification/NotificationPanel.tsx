@@ -12,7 +12,7 @@ import { ConfimationDialog } from "./Dialog";
 import useDialog from "../../hooks/useDialog";
 import PostDetail from "../post/pages/PostDetail";
 import { PostModel } from "../../models/post/PostModel";
-import { useLoading } from "../../hooks/useLoading";
+//import { useLoading } from "../../hooks/useLoading";
 import { useProfile } from "../../types/UserContext";
 import { remoteUrl } from "../../types/constant";
 import useSocketNotification from "../../hooks/useSocketNotification";
@@ -37,9 +37,9 @@ interface Notification {
   kind?: number;
 }
 
-interface NotificationResponse {
-  content: Notification[];
-}
+// interface NotificationResponse {
+//   content: Notification[];
+// }
 
 const NotificationPanel = () => {
   const { isDialogVisible, showDialog, hideDialog } = useDialog();
@@ -51,7 +51,7 @@ const NotificationPanel = () => {
   const [totalNotifications, setTotalNotifications] = useState();
   const [showModal, setShowModal] = useState(false);
   const [postItem, setPostItem] = useState<PostModel| null>(null);
-  const { isLoading, showLoading, hideLoading } = useLoading();
+ //const { isLoading, showLoading, hideLoading } = useLoading();
   const observerTarget = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(0);
   const { profile } = useProfile();
@@ -159,9 +159,9 @@ const NotificationPanel = () => {
       console.error('Error refreshing post detail:', error);
     }
   };
-  const handleShowModal = () => {
-    setShowModal(true);
-    };
+  // const handleShowModal = () => {
+  //   setShowModal(true);
+  //   };
   const handleNewNotification = useCallback(() => {
       fetchNotifications(0);
     }, [fetchNotifications]);

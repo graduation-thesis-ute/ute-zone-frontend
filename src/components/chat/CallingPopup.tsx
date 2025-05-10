@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PhoneOff, Phone } from "lucide-react";
+import { PhoneOff } from "lucide-react";
 
 interface CallingPopupProps {
   receiverId: string;
@@ -20,13 +20,13 @@ const CallingPopup: React.FC<CallingPopupProps> = ({
   // Animated dots for "Calling..." text
   const [dots, setDots] = useState("");
   // State for animation effects
-  const [isRinging, setIsRinging] = useState(true);
+ // const [isRinging, setIsRinging] = useState(true);
   const [ringCount, setRingCount] = useState(0);
 
   // Ringing animation effect
   useEffect(() => {
     const ringInterval = setInterval(() => {
-      setIsRinging((prev) => !prev);
+      //setIsRinging((prev) => !prev);
       setRingCount((prev) => prev + 1);
     }, 1000);
 

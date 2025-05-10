@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { EmailPattern, remoteUrl } from "../../types/constant";
+import { remoteUrl } from "../../types/constant";
 import UserIcon from "../../assets/user_icon.png";
 import {
   X,
@@ -17,7 +17,7 @@ import { AlertDialog } from "../Dialog";
 import InputField from "../InputField";
 import useForm from "../../hooks/useForm";
 import { getDate, uploadImage } from "../../types/utils";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import useFetch from "../../hooks/useFetch";
 import VerificationModal from "./VerificationModal";
 import OTPModal from "./OTPModal";
@@ -61,12 +61,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [tempSensitiveValue, setTempSensitiveValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [errorPassword, setErrorPassword] = useState<string | null>(null);
+ // const [errorPassword, setErrorPassword] = useState<string | null>(null);
   const [errorOTP, setErrorOTP] = useState<string | null>(null);
   const [isAlertVisible, setIsAlertVisible] = useState(false);
   const [isAlertLoginVisible, setIsAlertLoginVisible] = useState(false);
   const [showPasswordFields, setShowPasswordFields] = useState(false);
-  const navigate = useNavigate();
+ // const navigate = useNavigate();
   const [image, setImage] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { post } = useFetch();
@@ -136,7 +136,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     form: verificationForm,
     handleChange: handleVerificationChange,
     errors: verificationErrors,
-    isValidForm: isValidVerificationForm,
+    //isValidForm: isValidVerificationForm,
   } = useForm({ currentPassword: "" }, {}, validateVerification);
 
   useEffect(() => {

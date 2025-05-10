@@ -5,9 +5,7 @@ import {
   Settings,
   LogOut,
   Video,
-  Phone,
   Info,
-  Search,
   MoreVertical,
 } from "lucide-react";
 import UserIcon from "../../assets/user_icon.png";
@@ -46,7 +44,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const isGroup = conversation.kind === 1;
   // mock online status
-  const isOnline = true;
+  //const isOnline = true;
   const toggleMoreMenu = () => {
     setShowMoreMenu(!showMoreMenu);
   };

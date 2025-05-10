@@ -17,8 +17,8 @@ import {
 } from "../components/Dialog";
 import { encrypt, uploadImage } from "../types/utils";
 import { remoteUrl } from "../types/constant";
-import { data, useNavigate } from "react-router-dom";
-import { useProfile } from "../types/UserContext";
+//import { data, useNavigate } from "react-router-dom";
+//import { useProfile } from "../types/UserContext";
 import ChatHeader from "../components/chat/ChatHeader";
 import MessageList from "../components/chat/MessageList";
 import ChatInput from "../components/chat/ChatInput";
@@ -51,9 +51,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [friends, setFriends] = useState<Friends[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const { get, post, del, put, loading } = useFetch();
+  const { get, post, del, put } = useFetch();
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const scrollContainerRef = useRef<null | HTMLDivElement>(null);
+  //const scrollContainerRef = useRef<null | HTMLDivElement>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
@@ -76,7 +76,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isConfirmLeaveDialogOpen, setIsConfirmLeaveDialogOpen] =
     useState(false);
@@ -87,7 +87,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     useState(false);
   const [memberIdSelected, setMemberIdSelected] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const { profile } = useProfile();
+  //const { profile } = useProfile();
 
   const [isCalling, setIsCalling] = useState(false);
   const [receiverInfo, setReceiverInfo] = useState<any>(null);
@@ -96,7 +96,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  //const [callStartTime, setCallStartTime] = useState<Date | null>(null);
   const [callDuration, setCallDuration] = useState<number>(0);
   const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
 
@@ -346,7 +346,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsVideoCallActive(true);
         await createOffer();
         // Bắt đầu đếm thời gian cuộc gọi
-        setCallStartTime(new Date());
+        //setCallStartTime(new Date());
         callDurationInterval.current = setInterval(() => {
           setCallDuration((prev) => prev + 1);
         }, 1000);
@@ -642,7 +642,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log("Call duration interval cleared");
     }
     setCallDuration(0);
-    setCallStartTime(null);
+    //setCallStartTime(null);
     // socketVideo?.emit("END_VIDEO_CALL", {
     //   conversationId: conversation._id,
     //   callerId: userCurrent?._id,
@@ -675,7 +675,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log("Call duration interval cleared");
     }
     setCallDuration(0);
-    setCallStartTime(null);
+    //setCallStartTime(null);
     peerConnectionRef.current = null;
     console.log("Call ended by caller ChatWindow");
   };
@@ -708,7 +708,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       console.log("Call duration interval cleared");
     }
     setCallDuration(0);
-    setCallStartTime(null);
+    //setCallStartTime(null);
     peerConnectionRef.current = null;
     console.log("Call ended by caller ChatWindow");
   };
@@ -844,9 +844,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
-  const toggleDropdown = (messageId: string) => {
-    setActiveDropdown(activeDropdown === messageId ? null : messageId);
-  };
+  // const toggleDropdown = (messageId: string) => {
+  //   setActiveDropdown(activeDropdown === messageId ? null : messageId);
+  // };
 
   const fetchFriends = async () => {
     try {
