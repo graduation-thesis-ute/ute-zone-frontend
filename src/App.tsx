@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import useFetch from "./hooks/useFetch";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
+import Chatbot from "./views/ChatBot";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -53,7 +54,8 @@ const App = () => {
                 <>
                   <Route path="/" element={<Home />} />
                   {/* <Route path="/friends" element={<Friend />} /> */}
-                  {/* <Route path="/postPage" element={<PostPage />} /> */}
+                  {/* <Route path="/postPage" element={<PostPage />} /> */}\
+                  <Route path="/chat" element={<Chatbot />} />
                 </>
               ) : (
                 <>
