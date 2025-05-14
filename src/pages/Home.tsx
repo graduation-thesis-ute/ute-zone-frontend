@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import NavBar from "../components/NavBar";
 import { LoadingDialog } from "../components/Dialog";
 import ChatList from "../components/chat/ChatList";
-import ChatWindow from "../views/ChatWindow";
+import ChatWindow from "./ChatWindow";
 import WelcomeIcon from "../assets/welcome.png";
 import useFetch from "../hooks/useFetch";
 import { Conversation, UserProfile } from "../models/profile/chat";

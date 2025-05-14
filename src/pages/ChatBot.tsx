@@ -1,28 +1,71 @@
 import { useState, useRef, useEffect } from "react";
+import { EventSourcePolyfill } from "event-source-polyfill";
+import useFetch from "../hooks/useFetch";
 import { remoteUrl } from "../types/constant";
+import { v4 as uuidv4 } from "uuid";
 
 const Chatbot = () => {
-  const [messages, setMessages] = useState<
-    { type: string; content: string; streaming?: boolean }[]
-  >([
+  const { get, post, loading, error } = useFetch();
+  type Message = { type: string; content: string; streaming?: boolean };
+  type Conversation = { id: string; date: string; title: string };
+  const [messages, setMessages] = useState<Message[]>([
     { type: "bot", content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?" },
   ]);
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const [suggestionQuestions] = useState([
     { icon: "💡", text: "Tôi muốn biết về học bổng của trường" },
     { icon: "🕒", text: "Có nên học ở HCMUTE không?" },
     { icon: "⚠️", text: "Điểm chuẩn các ngành năm trước là bao nhiêu?" },
     { icon: "✅", text: "Ngành Công nghệ thông tin học những gì?" },
   ]);
-  const [conversations] = useState([
-    { date: "10/05/2025", title: "Có nên học ở HCMU..." },
-    { date: "29/04/2025", title: "Tôi muốn biết về họ..." },
-  ]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
 
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  // Tải danh sách conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const history = await get("/v1/chatbot/conversations", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
+        const formattedConversations = history.map((convo: any) => ({
+          id: convo.conversationId,
+          date: new Date(convo.createdAt).toLocaleDateString("vi-VN"),
+          title: convo.title,
+        }));
+
+        setConversations(formattedConversations);
+
+        // Tự động tải cuộc trò chuyện đầu tiên nếu có
+        if (history.length > 0) {
+          setCurrentConversationId(history[0].conversationId);
+          loadConversation(history[0].conversationId);
+        }
+      } catch (err: any) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "bot",
+            content: `Lỗi: ${
+              err?.message || "Không thể tải danh sách cuộc trò chuyện"
+            }`,
+          },
+        ]);
+      }
+    };
+
+    fetchConversations();
+  }, [get]);
+
+  // Cuộn xuống cuối khi messages thay đổi
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
@@ -30,23 +73,119 @@ const Chatbot = () => {
     }
   }, [messages]);
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
+  // Tải lịch sử tin nhắn của conversation
+  const loadConversation = async (conversationId: string) => {
+    try {
+      setCurrentConversationId(conversationId);
+      const token = localStorage.getItem("accessToken");
+      const conversation = await get(
+        `/v1/chatbot/conversation/${conversationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    // Add user message
-    setMessages((prev) => [...prev, { type: "user", content: inputValue }]);
+      const historyMessages = conversation.messages.map((msg: any) => ({
+        type: msg.role === "user" ? "user" : "bot",
+        content: msg.content,
+      }));
 
-    // Start streaming response
-    setIsLoading(true);
+      setMessages([
+        {
+          type: "bot",
+          content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+        },
+        ...historyMessages,
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "bot",
+          content: `Lỗi: ${err?.message || "Không thể tải lịch sử trò chuyện"}`,
+        },
+      ]);
+    }
+  };
 
-    // Close existing connection if any
+  // Tạo cuộc trò chuyện mới
+  const handleNewChat = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const newConversationId = uuidv4();
+
+      // Gửi yêu cầu tạo conversation mới
+      await post("/v1/chatbot/conversation/new", {
+        conversationId: newConversationId,
+      });
+
+      setCurrentConversationId(newConversationId);
+      setMessages([
+        {
+          type: "bot",
+          content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+        },
+      ]);
+
+      setConversations((prev) => [
+        {
+          id: newConversationId,
+          date: new Date().toLocaleDateString("vi-VN"),
+          title: "Cuộc trò chuyện mới",
+        },
+        ...prev,
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "bot",
+          content: `Lỗi: ${
+            err?.message || "Không thể tạo cuộc trò chuyện mới"
+          }`,
+        },
+      ]);
+    }
+  };
+
+  // Xử lý gửi câu hỏi
+  const handleSend = (questionText = inputValue) => {
+    const question = questionText.trim();
+    if (!question) return;
+
+    setMessages((prev) => [...prev, { type: "user", content: question }]);
+
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    // Create new connection
-    const eventSource = new EventSource(
-      `${remoteUrl}/v1/chatbot/chat?question=${encodeURIComponent(inputValue)}`
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setMessages((prev) => [
+        ...prev,
+        { type: "bot", content: "Vui lòng đăng nhập để sử dụng chatbot." },
+      ]);
+      setInputValue("");
+      return;
+    }
+
+    // Nếu không có conversationId, tạo mới
+    if (!currentConversationId) {
+      handleNewChat();
+      return;
+    }
+
+    const eventSource = new EventSourcePolyfill(
+      `${remoteUrl}/v1/chatbot/chat?question=${encodeURIComponent(
+        question
+      )}&conversationId=${currentConversationId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     eventSourceRef.current = eventSource;
 
@@ -58,7 +197,6 @@ const Chatbot = () => {
         streamedResponse += data.token;
         setMessages((prev) => {
           const newMessages = [...prev];
-          // Update the last message if it's a bot message being streamed, otherwise add new one
           if (
             newMessages.length > 0 &&
             newMessages[newMessages.length - 1].type === "bot" &&
@@ -75,7 +213,6 @@ const Chatbot = () => {
           return newMessages;
         });
       } else if (data.done) {
-        setIsLoading(false);
         setMessages((prev) => {
           const newMessages = [...prev];
           if (
@@ -86,6 +223,18 @@ const Chatbot = () => {
           }
           return newMessages;
         });
+
+        // Cập nhật title của conversation (dựa trên câu hỏi đầu tiên)
+        if (messages.length === 1) {
+          setConversations((prev) =>
+            prev.map((convo) =>
+              convo.id === currentConversationId
+                ? { ...convo, title: question.slice(0, 20) + "..." }
+                : convo
+            )
+          );
+        }
+
         eventSource.close();
       } else if (data.error) {
         streamedResponse += `\n[ERROR]: ${data.error}`;
@@ -93,7 +242,6 @@ const Chatbot = () => {
           ...prev,
           { type: "bot", content: streamedResponse },
         ]);
-        setIsLoading(false);
         eventSource.close();
       }
     };
@@ -102,13 +250,11 @@ const Chatbot = () => {
       console.error("EventSource error:", error);
       setMessages((prev) => [
         ...prev,
-        { type: "bot", content: `[Connection error: ${error.type}]` },
+        { type: "bot", content: "[Lỗi kết nối, vui lòng thử lại]" },
       ]);
-      setIsLoading(false);
       eventSource.close();
     };
 
-    // Clear input
     setInputValue("");
   };
 
@@ -119,32 +265,17 @@ const Chatbot = () => {
     }
   };
 
-  const handleSuggestionClick = (question: any) => {
-    setInputValue(question);
-    // Optional: auto send when clicking a suggestion
-    // setMessages(prev => [...prev, { type: "user", content: question }]);
-    // handleSend with the question
-  };
-
-  const handleNewChat = () => {
-    setMessages([
-      {
-        type: "bot",
-        content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
-      },
-    ]);
+  const handleSuggestionClick = (question: string) => {
+    handleSend(question);
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        {/* Logo */}
         <div className="p-4 flex justify-center border-b border-gray-200">
           <img src="/logo.png" alt="HCMUTE Logo" className="h-16" />
         </div>
-
-        {/* New Chat Button */}
         <div className="px-4 py-3">
           <button
             onClick={handleNewChat}
@@ -154,13 +285,20 @@ const Chatbot = () => {
             <span>Cuộc trò chuyện mới</span>
           </button>
         </div>
-
-        {/* Conversation History */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((convo, index) => (
+          {loading && (
+            <div className="px-4 py-3 text-gray-500">Đang tải...</div>
+          )}
+          {error && (
+            <div className="px-4 py-3 text-red-500">Lỗi: {error.message}</div>
+          )}
+          {conversations.map((convo) => (
             <div
-              key={index}
-              className="px-4 py-3 hover:bg-gray-100 cursor-pointer"
+              key={convo.id}
+              onClick={() => loadConversation(convo.id)}
+              className={`px-4 py-3 hover:bg-gray-100 cursor-pointer ${
+                currentConversationId === convo.id ? "bg-blue-50" : ""
+              }`}
             >
               <div className="flex items-center text-gray-600 text-sm mb-1">
                 <span className="mr-2">
@@ -185,8 +323,6 @@ const Chatbot = () => {
             </div>
           ))}
         </div>
-
-        {/* Explore Button */}
         <div className="p-4 border-t border-gray-200">
           <button className="w-full flex items-center justify-center text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">
             <svg
@@ -210,7 +346,6 @@ const Chatbot = () => {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Messages */}
         <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-6 bg-gray-50"
@@ -249,7 +384,7 @@ const Chatbot = () => {
                 <button
                   key={index}
                   onClick={() => handleSuggestionClick(suggestion.text)}
-                  className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 flex items-start"
+                  className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:bg-blue-50 flex items-start"
                 >
                   <span className="mr-2">{suggestion.icon}</span>
                   <span className="text-sm text-gray-700">
@@ -274,8 +409,8 @@ const Chatbot = () => {
             />
             <div className="absolute right-2">
               <button
-                onClick={handleSend}
-                disabled={isLoading || !inputValue.trim()}
+                onClick={() => handleSend()}
+                disabled={loading || !inputValue.trim()}
                 className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50"
               >
                 <svg
@@ -295,7 +430,9 @@ const Chatbot = () => {
               </button>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mt-2 text-right">0/1000</div>
+          <div className="text-xs text-gray-500 mt-2 text-right">
+            {inputValue.length}/1000
+          </div>
         </div>
       </div>
     </div>
