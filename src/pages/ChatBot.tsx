@@ -113,7 +113,7 @@ const Chatbot = () => {
   // Tạo cuộc trò chuyện mới
   const handleNewChat = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
+      // const token = localStorage.getItem("accessToken");
       const newConversationId = uuidv4();
 
       // Gửi yêu cầu tạo conversation mới
