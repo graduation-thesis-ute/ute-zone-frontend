@@ -1,16 +1,16 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Login from "./views/Login";
-import Register from "./views/Register";
-import ForgotPassword from "./views/ForgotPassword";
-import Home from "./views/Home";
-import Verify from "./views/Verify";
-import NotFound from "./views/NotFound";
-import Loading from "./views/Loading";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import Home from "./pages/Home";
+import Verify from "./pages/Verify";
+import NotFound from "./pages/NotFound";
+import Loading from "./pages/Loading";
 import { useEffect, useState } from "react";
 import useFetch from "./hooks/useFetch";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
-import Chatbot from "./views/ChatBot";
+import Chatbot from "./pages/ChatBot";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
