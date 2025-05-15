@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { MessageCircle, FileText, Users, User, LogOut } from "lucide-react";
+import {
+  MessageCircle,
+  FileText,
+  Users,
+  User,
+  LogOut,
+  Bot,
+} from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
 import { useNavigate } from "react-router-dom";
@@ -87,6 +94,25 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
         </button>
 
         <button
+          data-tooltip-id="tooltip-chatbot"
+          data-tooltip-content="Chatbot"
+          onClick={() => {
+            setSelectedSection("chatbot");
+            setActiveSection("chatbot");
+          }}
+          className={`focus:outline-none ${
+            activeSection === "chatbot" ? "text-yellow-400" : ""
+          }`}
+        >
+          <Bot
+            size={24}
+            className={`transition-transform ${
+              activeSection === "chatbot" ? "scale-125" : "hover:scale-110"
+            }`}
+          />
+        </button>
+
+        <button
           data-tooltip-id="tooltip-posts"
           data-tooltip-content="Bài đăng"
           onClick={() => {
@@ -135,6 +161,7 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
 
         <Tooltip id="tooltip-profile" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-messages" style={{ zIndex: 100 }} />
+        <Tooltip id="tooltip-chatbot" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-posts" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-friends" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-logout" style={{ zIndex: 100 }} />
