@@ -26,6 +26,8 @@ import VideoCallModal from "../components/chat/VideoCallModal";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import ringtone from "/receiver-ringtone.mp3";
 import { toast } from "react-toastify";
+import ChatbotList from "../components/chatbot/ChatbotList";
+import ChatbotWindow from "../components/chatbot/ChatbotWindow";
 
 export interface CallData {
   callerId: string;
@@ -56,6 +58,9 @@ const Home = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [isComingCall, setIsComingCall] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [selectedChatbotConversation, setSelectedChatbotConversation] =
+    useState<any>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -434,6 +439,15 @@ const Home = () => {
             userCurrent={userCurrent}
             handleConversationCreated={handleMessageChange}
           />
+        ) : selectedSection === "chatbot" ? (
+          <ChatbotList
+            onSelectConversation={(conversation) => {
+              setSelectedChatbotConversation(conversation);
+              setIsSidebarOpen(false);
+            }}
+            userCurrent={userCurrent}
+            handleConversationCreated={handleMessageChange}
+          />
         ) : selectedSection === "friends" ? (
           <FriendListItem
             selectedFriendSection={selectedFriendSection}
@@ -476,6 +490,12 @@ const Home = () => {
               </div>
             </div>
           )
+        ) : selectedSection === "chatbot" ? (
+          <ChatbotWindow
+            conversation={selectedChatbotConversation}
+            userCurrent={userCurrent}
+            onMessageChange={handleMessageChange}
+          />
         ) : selectedSection === "friends" ? (
           selectedFriendSection === "friends" ? (
             <FriendsList />
