@@ -559,9 +559,10 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                 </div>
             ) : posts.length > 0 ? (
-                posts.map(post => (
-                    <GroupPost key={post._id} post={post} />
-                ))
+                posts.map(post => {
+                    const postId = post._id || (post as any).id;
+                    return <GroupPost key={postId} post={post} />;
+                })
             ) : (
                 <div key="no-posts" className="text-center text-gray-500 py-8">
                     Chưa có bài viết nào.
@@ -613,7 +614,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                             )}
                         </div>
                         {pendingPosts.map(post => {
-                            const postId = (post as any).id || post._id;
+                            const postId = post._id || (post as any).id;
                             return (
                                 <div key={postId} className="bg-white rounded-lg shadow">
                                     <div className="flex items-center px-4 py-2 border-b border-gray-100">
@@ -628,7 +629,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                                             )}
                                         </button>
                                     </div>
-                                    <GroupPost post={post} />
+                                    <GroupPost key={`post-${postId}`} post={post} />
                                     <div className="px-4 py-2 border-t border-gray-200 flex justify-end space-x-2">
                                         <button
                                             onClick={() => handleApprovePost(postId)}
