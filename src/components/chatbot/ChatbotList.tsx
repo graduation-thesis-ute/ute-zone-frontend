@@ -6,9 +6,11 @@ import {
   Loader2,
   X,
   Clock,
+  Trash2,
 } from "lucide-react";
 import useFetch from "../../hooks/useFetch";
 import { v4 as uuidv4 } from "uuid";
+import { ConfimationDialog } from "../Dialog";
 
 interface ChatbotListProps {
   onSelectConversation: (conversation: any) => void;
@@ -27,7 +29,12 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
   const [activeConversation, setActiveConversation] = useState<string | null>(
     null
   );
-  const { get, post } = useFetch();
+  const { get, post, del } = useFetch();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     fetchConversations();
@@ -91,6 +98,49 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
     setSearchQuery("");
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    setConversationToDelete(conversationId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!conversationToDelete) return;
+
+    try {
+      setDeletingId(conversationToDelete);
+      const token = localStorage.getItem("accessToken");
+      await del(`/v1/chatbot/conversation/${conversationToDelete}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Remove the deleted conversation from the list
+      setConversations((prev) =>
+        prev.filter((conv) => conv.id !== conversationToDelete)
+      );
+
+      // If the deleted conversation was active, clear the selection
+      if (activeConversation === conversationToDelete) {
+        setActiveConversation(null);
+        onSelectConversation(null);
+      }
+    } catch (err: any) {
+      console.error("Error deleting conversation:", err);
+      alert("Không thể xóa cuộc trò chuyện. Vui lòng thử lại.");
+    } finally {
+      setDeletingId(null);
+      setShowDeleteConfirm(false);
+      setConversationToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setConversationToDelete(null);
+  };
+
   const filteredConversations = conversations.filter((conversation) =>
     conversation.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -148,6 +198,17 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
         </div>
       </div>
 
+      {/* Delete Confirmation Dialog */}
+      <ConfimationDialog
+        isVisible={showDeleteConfirm}
+        title="Xóa cuộc trò chuyện"
+        message="Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Hành động này không thể hoàn tác."
+        color="red"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        confirmText="Xóa"
+      />
+
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -161,26 +222,42 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
               <div
                 key={conversation.id}
                 onClick={() => handleSelectConversation(conversation)}
-                className={`px-4 py-3.5 cursor-pointer transition-all duration-200 ${
+                className={`px-4 py-3.5 cursor-pointer transition-all duration-200 group ${
                   activeConversation === conversation.id
                     ? "bg-blue-50 border-l-4 border-blue-500"
                     : "hover:bg-gray-50 border-l-4 border-transparent"
                 } ${index !== 0 ? "border-t border-gray-100" : ""}`}
               >
-                <div className="flex items-center justify-between text-gray-500 text-xs mb-1.5">
-                  <div className="flex items-center">
-                    <Clock size={14} className="mr-1" />
-                    <span>{formatDate(conversation.date)}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between text-gray-500 text-xs mb-1.5">
+                      <div className="flex items-center">
+                        <Clock size={14} className="mr-1" />
+                        <span>{formatDate(conversation.date)}</span>
+                      </div>
+                    </div>
+                    <div
+                      className={`truncate ${
+                        activeConversation === conversation.id
+                          ? "text-blue-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {conversation.title}
+                    </div>
                   </div>
-                </div>
-                <div
-                  className={`truncate ${
-                    activeConversation === conversation.id
-                      ? "text-blue-700 font-medium"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {conversation.title}
+                  <button
+                    onClick={(e) => handleDeleteClick(e, conversation.id)}
+                    disabled={deletingId === conversation.id}
+                    className="ml-2 p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                    title="Xóa cuộc trò chuyện"
+                  >
+                    {deletingId === conversation.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
                 </div>
               </div>
             ))}
