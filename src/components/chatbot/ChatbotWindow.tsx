@@ -4,7 +4,7 @@ import useFetch from "../../hooks/useFetch";
 import { remoteUrl } from "../../types/constant";
 import WelcomeIcon from "../../assets/welcome.png";
 import ReactMarkdown from "react-markdown";
-import { Send, Loader2, Bot, User, Sparkles, RefreshCw } from "lucide-react";
+import { Send, Loader2, Bot, User, Sparkles } from "lucide-react";
 
 interface ChatbotWindowProps {
   conversation: any;
