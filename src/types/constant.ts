@@ -1,5 +1,4 @@
-const EmailPattern =
-  /^(?!.*[.]{2,})[a-zA-Z0-9.%]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const EmailPattern = /^[0-9]{8}@(student\.hcmute\.edu\.vn|hcmute\.edu\.vn)$/;
 
 const PhonePattern = /^0[1235789][0-9]{8}$/;
 
