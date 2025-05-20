@@ -63,7 +63,7 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
 
   const loadConversation = async (conversationId: string) => {
     try {
-      setIsTyping(true);
+      // setIsTyping(true);
       const token = localStorage.getItem("accessToken");
       const conversation = await get(
         `/v1/chatbot/conversation/${conversationId}`,
