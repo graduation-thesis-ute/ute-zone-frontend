@@ -27,12 +27,7 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isReceivingResponse, setIsReceivingResponse] = useState(false);
-  const [suggestionQuestions] = useState([
-    { icon: "💡", text: "Tôi muốn biết về học bổng của trường" },
-    { icon: "🕒", text: "Có nên học ở HCMUTE không?" },
-    { icon: "⚠️", text: "Điểm chuẩn các ngành năm trước là bao nhiêu?" },
-    { icon: "✅", text: "Ngành Công nghệ thông tin học những gì?" },
-  ]);
+  const [suggestionQuestions, setSuggestionQuestions] = useState<any[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
@@ -60,6 +55,18 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
       )}px`;
     }
   }, [inputValue]);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const res = await get("/v1/chatbot/suggestions/active");
+        setSuggestionQuestions(res);
+      } catch (err) {
+        console.error("Failed to fetch suggestions:", err);
+      }
+    };
+    fetchSuggestions();
+  }, []);
 
   const loadConversation = async (conversationId: string) => {
     try {
@@ -382,7 +389,7 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
       </div>
 
       {/* Suggestions */}
-      {messages.length <= 2 && (
+      {messages.length <= 2 && suggestionQuestions.length > 0 && (
         <div className="px-4 py-3 bg-white border-t border-gray-100">
           <div className="flex items-center mb-3">
             <Sparkles size={16} className="text-blue-500 mr-2" />

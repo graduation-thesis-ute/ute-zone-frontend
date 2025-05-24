@@ -38,6 +38,7 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
 
   useEffect(() => {
     fetchConversations();
+    console.log("chatbot conversations fetched", conversations);
   }, [get]);
 
   const fetchConversations = async () => {
@@ -243,7 +244,9 @@ const ChatbotList: React.FC<ChatbotListProps> = ({
                           : "text-gray-700"
                       }`}
                     >
-                      {conversation.title}
+                      {conversation.title !== "undefined..."
+                        ? conversation.title
+                        : "Cuộc trò chuyện mới"}
                     </div>
                   </div>
                   <button
