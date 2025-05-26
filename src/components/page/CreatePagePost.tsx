@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Image as ImageIcon, Send, Loader2 } from 'lucide-react';
+import { X, Image as ImageIcon, Send, Loader2, AlertCircle, CircleCheckBigIcon } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { uploadImage2 } from '../../types/utils';
+import { toast } from 'react-toastify';
 
 interface CreatePagePostProps {
   pageId: string;
@@ -13,7 +14,55 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { post } = useFetch();
+  const { post, get } = useFetch();
+
+  // Thêm hàm kiểm tra status của page
+  const checkPageStatus = async () => {
+    try {
+      console.log("Checking page status for pageId:", pageId);
+      const response = await get(`/v1/page/${pageId}`);
+      console.log("Page status response:", response);
+      
+      if (response.result) {
+        const pageStatus = response.data.status;
+        console.log("Page status:", pageStatus);
+        
+        if (pageStatus === 3) {
+          console.log("Page is rejected, showing error toast");
+          toast.error(
+            <div className="flex items-center gap-2">
+              <AlertCircle className="text-red-500" size={20} />
+              <span>Trang của bạn đã bị từ chối do vi phạm nội dung và không được duyệt.</span>
+            </div>,
+            {
+              position: "top-center",
+              autoClose: 5000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              theme: "colored", // Thêm theme để thông báo nổi bật hơn
+              style: {
+                background: '#FEE2E2', // Màu nền đỏ nhạt
+                color: '#991B1B', // Màu chữ đỏ đậm
+                fontSize: '14px',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }
+            }
+          );
+          onClose();
+          return false;
+        }
+        return true;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error checking page status:', error);
+      return true;
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -42,6 +91,16 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
 
     try {
       setIsSubmitting(true);
+      console.log("Starting submit process...");
+      
+      // Kiểm tra status của page trước khi đăng
+      const isPageActive = await checkPageStatus();
+      console.log("Is page active:", isPageActive);
+      
+      if (!isPageActive) {
+        console.log("Page is not active, stopping submission");
+        return;
+      }
       
       // Upload images and get URLs
       const imageUrls = await Promise.all(
@@ -56,16 +115,96 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
         pageId
       });
       
-      if (response.result) {
+      console.log("Create post response:", response);
+      
+      if (response.result && response.data) {
+        // Kiểm tra status trực tiếp từ response data
+        const postStatus = response.data.status;
+        console.log("Post status from response:", postStatus);
+        
+        if (postStatus === 3) {
+          // Lấy thông tin chi tiết về lý do từ chối
+          const flaggedCategories = response.data.flaggedCategories || [];
+          const moderationDetails = response.data.moderationDetails || {};
+          
+          let rejectionReason = "Bài đăng của bạn đã bị từ chối do vi phạm nội dung.";
+          if (flaggedCategories.length > 0) {
+            rejectionReason += ` Các vi phạm: ${flaggedCategories.join(", ")}`;
+          }
+          
+          toast.error(
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="text-red-500" size={20} />
+                <span className="font-semibold">Bài đăng bị từ chối</span>
+              </div>
+              <p className="text-sm ml-7">{rejectionReason}</p>
+            </div>,
+            {
+              position: "top-center",
+              autoClose: 7000, // Tăng thời gian hiển thị để người dùng đọc kỹ
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              theme: "colored",
+              style: {
+                background: '#FEE2E2',
+                color: '#991B1B',
+                fontSize: '14px',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                maxWidth: '500px', // Giới hạn chiều rộng để dễ đọc
+              }
+            }
+          );
+        } else {
+          toast.success(
+            <div className="flex items-center gap-2">
+              <CircleCheckBigIcon className="text-green-500" size={20} />
+              <span>Đăng bài thành công!</span>
+            </div>,
+            {
+              position: "top-center",
+              autoClose: 3000,
+              theme: "colored",
+              style: {
+                background: '#ECFDF5',
+                color: '#065F46',
+                fontSize: '14px',
+                padding: '16px',
+                borderRadius: '8px',
+              }
+            }
+          );
+        }
+
         setContent('');
         setImagePreviews([]);
         onPostCreated();
         onClose();
       } else {
-        console.error('Failed to create post:', response.message);
+        console.error('Failed to create post:', response);
+        toast.error(response.message || 'Không thể tạo bài đăng', {
+          position: "top-center",
+          theme: "colored",
+          style: {
+            background: '#FEE2E2',
+            color: '#991B1B',
+          }
+        });
       }
     } catch (error) {
       console.error('Error creating post:', error);
+      toast.error('Có lỗi xảy ra khi tạo bài đăng', {
+        position: "top-center",
+        theme: "colored",
+        style: {
+          background: '#FEE2E2',
+          color: '#991B1B',
+        }
+      });
     } finally {
       setIsSubmitting(false);
     }

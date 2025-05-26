@@ -71,7 +71,8 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
         pageId: pageId,
         isPaged: '1',
         page: pageNum.toString(),
-        size: '10'
+        size: '10',
+        status: '1'
       });
       
       const data: PagePostResponse = response.data;

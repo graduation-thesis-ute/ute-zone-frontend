@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Image as ImageIcon } from 'lucide-react';
+import { X, Image as ImageIcon, AlertCircle, CircleCheckBigIcon } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { toast } from 'react-toastify';
 import { uploadImage2 } from '../../types/utils';
@@ -83,21 +83,102 @@ const CreateGroupPostDialog: React.FC<CreateGroupPostDialogProps> = ({
 
         try {
             setIsLoading(true);
-            await post('/v1/group-post/create', {
+            const response = await post('/v1/group-post/create', {
                 groupId,
                 content,
                 imageUrls: images
             });
             
-            toast.success('Đã đăng bài viết thành công');
-            setContent('');
-            setImages([]);
-            setImagePreviews([]);
-            onPostCreated();
-            onClose();
+            console.log("Create post response:", response);
+            
+            if (response.result && response.data) {
+                // Kiểm tra status trực tiếp từ response data
+                const postStatus = response.data.status;
+                console.log("Post status from response:", postStatus);
+                
+                if (postStatus === 3) {
+                    // Lấy thông tin chi tiết về lý do từ chối
+                    const flaggedCategories = response.data.flaggedCategories || [];
+                    const moderationDetails = response.data.moderationDetails || {};
+                    
+                    let rejectionReason = "Bài đăng của bạn đã bị từ chối do vi phạm nội dung.";
+                    if (flaggedCategories.length > 0) {
+                        rejectionReason += ` Các vi phạm: ${flaggedCategories.join(", ")}`;
+                    }
+                    
+                    toast.error(
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle className="text-red-500" size={20} />
+                                <span className="font-semibold">Bài đăng bị từ chối</span>
+                            </div>
+                            <p className="text-sm ml-7">{rejectionReason}</p>
+                        </div>,
+                        {
+                            position: "top-center",
+                            autoClose: 7000,
+                            hideProgressBar: false,
+                            closeOnClick: true,
+                            pauseOnHover: true,
+                            draggable: true,
+                            theme: "colored",
+                            style: {
+                                background: '#FEE2E2',
+                                color: '#991B1B',
+                                fontSize: '14px',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                maxWidth: '500px',
+                            }
+                        }
+                    );
+                } else {
+                    toast.success(
+                        <div className="flex items-center gap-2">
+                            <CircleCheckBigIcon className="text-green-500" size={20} />
+                            <span>Đăng bài thành công!</span>
+                        </div>,
+                        {
+                            position: "top-center",
+                            autoClose: 3000,
+                            theme: "colored",
+                            style: {
+                                background: '#ECFDF5',
+                                color: '#065F46',
+                                fontSize: '14px',
+                                padding: '16px',
+                                borderRadius: '8px',
+                            }
+                        }
+                    );
+                    setContent('');
+                    setImages([]);
+                    setImagePreviews([]);
+                    onPostCreated();
+                    onClose();
+                }
+            } else {
+                console.error('Failed to create post:', response);
+                toast.error(response.message || 'Không thể tạo bài đăng', {
+                    position: "top-center",
+                    theme: "colored",
+                    style: {
+                        background: '#FEE2E2',
+                        color: '#991B1B',
+                    }
+                });
+            }
         } catch (error) {
             console.error('Error creating post:', error);
-            toast.error('Có lỗi xảy ra khi đăng bài');
+            toast.error('Có lỗi xảy ra khi đăng bài', {
+                position: "top-center",
+                theme: "colored",
+                style: {
+                    background: '#FEE2E2',
+                    color: '#991B1B',
+                }
+            });
         } finally {
             setIsLoading(false);
         }
