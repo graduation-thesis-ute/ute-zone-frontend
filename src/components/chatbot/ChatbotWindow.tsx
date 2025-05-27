@@ -214,6 +214,11 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
         eventSource.close();
         setIsTyping(false);
         setIsReceivingResponse(false);
+
+        // Add a small delay to ensure typing indicator is hidden
+        setTimeout(() => {
+          setIsTyping(false);
+        }, 100); // Adjust delay as needed
       } else if (data.error) {
         streamedResponse += `\n[ERROR]: ${data.error}`;
         setMessages((prev) => [
