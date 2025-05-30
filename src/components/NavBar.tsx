@@ -6,6 +6,9 @@ import {
   User,
   LogOut,
   Bot,
+  MessageSquare,
+  Bookmark,
+  UsersRound,
 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
@@ -25,6 +28,7 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState("messages");
+  const [selectedGroupType, setSelectedGroupType] = useState("myGroups");
   const navigate = useNavigate();
   const { isDialogVisible, showDialog, hideDialog } = useDialog();
   const { setProfile } = useProfile();
@@ -151,6 +155,43 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
         </button>
 
         <button
+          data-tooltip-id="tooltip-pages"
+          data-tooltip-content="Trang"
+          onClick={() => {
+            setSelectedSection("pages");
+            setActiveSection("pages");
+          }}
+          className={`focus:outline-none ${
+            activeSection === "pages" ? "text-yellow-400" : ""
+          }`}
+        >
+          <Bookmark
+            size={24}
+            className={`transition-transform ${
+              activeSection === "pages" ? "scale-125" : "hover:scale-110"
+            }`}
+          />
+        </button>
+
+        <button
+          data-tooltip-id="tooltip-groups"
+          data-tooltip-content="Nhóm"
+          onClick={() => {
+            setSelectedSection("groups");
+            setActiveSection("groups");
+          }}
+          className={`focus:outline-none ${
+            activeSection === "groups" ? "text-yellow-400" : ""
+          }`}
+        >
+          <UsersRound
+            size={24}
+            className={`transition-transform ${
+              activeSection === "groups" ? "scale-125" : "hover:scale-110"
+            }`}
+          />
+        </button>
+        <button
           data-tooltip-id="tooltip-logout"
           data-tooltip-content="Đăng xuất"
           className="focus:outline-none mt-auto"
@@ -164,6 +205,8 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
         <Tooltip id="tooltip-chatbot" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-posts" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-friends" style={{ zIndex: 100 }} />
+        <Tooltip id="tooltip-pages" style={{ zIndex: 100 }} />
+        <Tooltip id="tooltip-groups" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-logout" style={{ zIndex: 100 }} />
 
         {/* Render các modals */}
