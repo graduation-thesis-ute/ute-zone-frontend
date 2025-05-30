@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { remoteUrl } from "../../types/constant";
 import { UserCircle, Phone, Mail, Book, X, Calendar } from "lucide-react";
 import { getDate } from "../../types/utils";
+import UserIcon from "../../assets/user_icon.png";
 
 interface ProfileModalProps {
   isVisible: boolean;
@@ -119,7 +120,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="flex flex-col items-center">
             <div className="relative mb-6">
               <img
-                src={profileData.avatarUrl || "https://via.placeholder.com/112"}
+                src={profileData.avatarUrl || UserIcon}
                 alt="Avatar"
                 className="rounded-full w-28 h-28 object-cover border-4 border-blue-100 shadow-lg"
               />

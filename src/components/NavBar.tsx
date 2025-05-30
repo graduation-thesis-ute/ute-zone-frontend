@@ -3,10 +3,9 @@ import {
   MessageCircle,
   FileText,
   Users,
-  Settings,
   User,
   LogOut,
-  MessageSquare,
+  Bot,
   Bookmark,
   UsersRound,
 } from "lucide-react";
@@ -18,7 +17,7 @@ import useDialog from "../hooks/useDialog";
 import ProfileModal from "../components/modal/ProfileModal";
 import EditProfileModal from "../components/modal/EditProfileModal";
 import { useProfile } from "../types/UserContext";
-import useFetch from "../hooks/useFetch";
+//import useFetch from "../hooks/useFetch";
 
 interface NavBarProps {
   setSelectedSection: (section: string) => void;
@@ -28,12 +27,12 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState("messages");
-  const [selectedGroupType, setSelectedGroupType] = useState("myGroups");
+  //const [selectedGroupType, setSelectedGroupType] = useState("myGroups");
   const navigate = useNavigate();
   const { isDialogVisible, showDialog, hideDialog } = useDialog();
-  const {setProfile} = useProfile();
-  const { get } = useFetch();
-  
+  const { setProfile } = useProfile();
+  //const { get } = useFetch();
+
   const handleProfileClick = () => {
     setProfileModalVisible(true);
     setActiveSection("profile");
@@ -93,6 +92,25 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
             size={24}
             className={`transition-transform ${
               activeSection === "messages" ? "scale-125" : "hover:scale-110"
+            }`}
+          />
+        </button>
+
+        <button
+          data-tooltip-id="tooltip-chatbot"
+          data-tooltip-content="Chatbot"
+          onClick={() => {
+            setSelectedSection("chatbot");
+            setActiveSection("chatbot");
+          }}
+          className={`focus:outline-none ${
+            activeSection === "chatbot" ? "text-yellow-400" : ""
+          }`}
+        >
+          <Bot
+            size={24}
+            className={`transition-transform ${
+              activeSection === "chatbot" ? "scale-125" : "hover:scale-110"
             }`}
           />
         </button>
@@ -172,7 +190,6 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
             }`}
           />
         </button>
-
         <button
           data-tooltip-id="tooltip-logout"
           data-tooltip-content="Đăng xuất"
@@ -184,6 +201,7 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
 
         <Tooltip id="tooltip-profile" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-messages" style={{ zIndex: 100 }} />
+        <Tooltip id="tooltip-chatbot" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-posts" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-friends" style={{ zIndex: 100 }} />
         <Tooltip id="tooltip-pages" style={{ zIndex: 100 }} />

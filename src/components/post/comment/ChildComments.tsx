@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import { CommentModel } from '../../../models/comment/CommentModel';
 
 const EmojiPicker = ({ onEmojiSelect }:any) => {
@@ -20,10 +20,10 @@ const EmojiPicker = ({ onEmojiSelect }:any) => {
 };
 
 const ChildComments = ({
-  parentId,
+  //parentId,
   childComments,
   isLoading,
-  onLoadMore,
+ // onLoadMore,
   totalChildren
 }: {
   parentId: string;
@@ -32,9 +32,9 @@ const ChildComments = ({
   onLoadMore: (parentId: string, page: number) => Promise<{ hasMore: boolean; totalRemaining: number }>;
   totalChildren: number;
 }) => {
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [remainingComments, setRemainingComments] = useState(totalChildren);
+  //const [page, setPage] = useState(0);
+ // const [hasMore, setHasMore] = useState(true);
+  //const [remainingComments, setRemainingComments] = useState(totalChildren);
   const [showComments, setShowComments] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -44,10 +44,10 @@ const ChildComments = ({
       setShowComments(true);
     }
     
-    const result = await onLoadMore(parentId, page);
-    setHasMore(result.hasMore);
-    setRemainingComments(result.totalRemaining);
-    setPage(prev => prev + 1);
+    //const result = await onLoadMore(parentId, page);
+    //setHasMore(result.hasMore);
+    //setRemainingComments(result.totalRemaining);
+    //setPage(prev => prev + 1);
   };
 
   const handleEmojiSelect = (emoji: string) => {

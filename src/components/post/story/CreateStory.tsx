@@ -5,7 +5,7 @@ import { useLoading } from "../../../hooks/useLoading";
 import { uploadImage } from "../../../types/utils";
 import { PlusCircle, Camera } from "lucide-react";
 
-const CreateStory = ({ isVisible, setVisible, profile, onButtonClick }: any) => {
+const CreateStory = ({ isVisible, setVisible, onButtonClick }: any) => {
   const { showLoading, hideLoading } = useLoading();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);

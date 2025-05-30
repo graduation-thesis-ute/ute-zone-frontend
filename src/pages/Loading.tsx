@@ -1,4 +1,4 @@
-import logo from "../assets/cookiedu_logo.png";
+import logo from "../assets/ute_logo_wb.png";
 
 const Loading = () => {
   return (

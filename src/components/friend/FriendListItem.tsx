@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Search, UserPlus, Users } from "lucide-react";
-import AddFriend from "./AddFriend";
+import React from "react";
+import { UserPlus, Users } from "lucide-react";
+
 
 interface FriendListItemProps {
   selectedFriendSection: string;
@@ -11,7 +11,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
   selectedFriendSection,
   setSelectedFriendSection,
 }) => {
-    const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
+    //const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
 
 //   // Hàm để mở/đóng thêm bạn bè
 //   const toggleAddFriend = () => {

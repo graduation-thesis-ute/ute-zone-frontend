@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { User, Mail, Phone, Calendar, Info, Briefcase, X } from "lucide-react";
+import  { useEffect, useState } from "react";
+import {  Mail, Phone, Calendar, Info, X } from "lucide-react";
 import { Friends } from "../../models/profile/chat";
 import useFetch from "../../hooks/useFetch";
 import UserIcon from "../../assets/user_icon.png";
@@ -8,10 +8,9 @@ import { useProfile } from "../../types/UserContext";
 const UserInfoPopup = ({
   user,
   onClose,
-  onAddFriend,
-  onCancelFriendRequest,
+
   onAcceptFriendRequest: parentAcceptCallback,
-  onRejectFriendRequest,
+
   onFowardMessage,
 }: any) => {
   if (!user) return null;
@@ -204,7 +203,7 @@ const UserInfoPopup = ({
       );
     }
 
-    const { isFriend, isPendingSender, isPendingReceiver, isRequestSender, isRequestReceiver } = friendshipStatus;
+    const { isFriend, isPendingSender, isPendingReceiver, isRequestSender } = friendshipStatus;
 
     if (isFriend) {
       return (

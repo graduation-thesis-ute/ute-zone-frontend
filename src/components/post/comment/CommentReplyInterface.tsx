@@ -6,7 +6,7 @@ const CommentReplyInterface = ({
   isLoading = false,
   onImageSelect,
   selectedImage,
-  onRemoveImage,
+  //onRemoveImage,
   onRefreshPostDetail,
 }: any) => {
   const [replyText, setReplyText] = useState('');

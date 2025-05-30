@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useFetch from "../hooks/useFetch";
 import useSocketChat from "../hooks/useSocketChat";
+import { useSocketVideoCall } from "../hooks/useSocketVideoCall";
 import {
   Message,
   Friends,
@@ -14,10 +15,10 @@ import {
   ConfimationDialog,
   LoadingDialog,
 } from "../components/Dialog";
-import { encrypt, decrypt, uploadImage } from "../types/utils";
+import { encrypt, uploadImage } from "../types/utils";
 import { remoteUrl } from "../types/constant";
-import { useNavigate } from "react-router-dom";
-import { useProfile } from "../types/UserContext";
+//import { data, useNavigate } from "react-router-dom";
+//import { useProfile } from "../types/UserContext";
 import ChatHeader from "../components/chat/ChatHeader";
 import MessageList from "../components/chat/MessageList";
 import ChatInput from "../components/chat/ChatInput";
@@ -26,6 +27,9 @@ import ManageMembersModal from "../components/chat/ManageMembersModal";
 import MemberListModal from "../components/chat/MemberListModal";
 import EditProfilePopup from "../components/chat/EditProfilePopup";
 import UserInfoPopup from "../components/chat/UserInfoPopup";
+import VideoCallModal from "../components/chat/VideoCallModal";
+import CallingPopup from "../components/chat/CallingPopup";
+import ringtone from "/caller-ringtone.mp3";
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   conversation,
@@ -47,9 +51,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [friends, setFriends] = useState<Friends[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const { get, post, del, put, loading } = useFetch();
+  const { get, post, del, put } = useFetch();
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const scrollContainerRef = useRef<null | HTMLDivElement>(null);
+  //const scrollContainerRef = useRef<null | HTMLDivElement>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
@@ -68,13 +72,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const size = 20;
   const [isScrollToBottom, setIsScrollToBottom] = useState(false);
-  const [updatedGroupName, setUpdatedGroupName] = useState(conversation.name);
-  const [avatar, setAvatar] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isConfirmLeaveDialogOpen, setIsConfirmLeaveDialogOpen] =
     useState(false);
@@ -84,9 +86,57 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isConfirmDelMemDialogOpen, setIsConfirmDelMemDialogOpen] =
     useState(false);
   const [memberIdSelected, setMemberIdSelected] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  //const { profile } = useProfile();
 
-  const [selectedUser, setSelectedUser] = useState(null);
-  const { profile } = useProfile();
+  const [isCalling, setIsCalling] = useState(false);
+  const [receiverInfo, setReceiverInfo] = useState<any>(null);
+  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  //const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+  const [callDuration, setCallDuration] = useState<number>(0);
+  const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const initializePeerConnection = (receiverId: string) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+      ],
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketVideo?.emit("ICE_CANDIDATE", {
+          to: receiverId,
+          from: userCurrent?._id,
+          candidate: event.candidate,
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      if (event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "failed") {
+        endCall();
+      }
+    };
+
+    peerConnectionRef.current = pc;
+    return pc;
+  };
 
   const handleAvatarClick = (user: any) => {
     setSelectedUser(user);
@@ -103,39 +153,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         const response = await get(`/v1/conversation-member/list`, {
           conversation: conversation._id,
         });
-
         if (response?.data?.content) {
           setMembersList(response.data.content);
-        } else {
-          console.error("Không có dữ liệu thành viên");
         }
       } catch (error) {
-        console.error("Lỗi khi lấy danh sách thành viên:", error);
+        console.error("Error fetching members:", error);
       } finally {
         setLoadingMembers(false);
       }
     };
     fetchMembersList();
-  }, [conversation._id]);
-
-  console.log("Members list:", membersList);
-
-  const handleOpenMemberList = async () => {
-    setLoadingMembers(true);
-    setIsMemberListOpen(true);
-    try {
-      const response = await get(`/v1/conversation-member/list`, {
-        conversation: conversation._id,
-      });
-      if (response.result) {
-        setMembersList(response.data.content);
-      }
-    } catch (error) {
-      console.error("Lỗi khi lấy danh sách thành viên:", error);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
+  }, [conversation._id, get]);
 
   const handleRemoveMember = async (memberId: string | null) => {
     setLoadingUpdate(true);
@@ -146,12 +174,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           prev.filter((member) => member._id !== memberId)
         );
         onConversationUpdateInfo(conversation);
-      } else {
-        alert("Xóa thành viên thất bại.");
       }
     } catch (error) {
-      console.error("Lỗi khi xóa thành viên:", error);
-      alert("Đã xảy ra lỗi khi xóa thành viên.");
+      console.error("Error removing member:", error);
+      alert("Error removing member.");
     } finally {
       setLoadingUpdate(false);
     }
@@ -165,8 +191,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsManageMembersModalOpen(false);
       onConversationUpdateInfo(conversation);
     } catch (error) {
-      console.error("Lỗi khi giải tán nhóm:", error);
-      alert("Đã xảy ra lỗi khi giải tán nhóm. Vui lòng thử lại sau.");
+      console.error("Error disbanding group:", error);
+      alert("Error disbanding group.");
     } finally {
       setLoadingUpdate(false);
     }
@@ -180,7 +206,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsManageMembersModalOpen(false);
       handleLeaveGroupUpdate(conversation);
     } catch (error) {
-      console.error("Lỗi khi rời nhóm:", error);
+      console.error("Error leaving group:", error);
     } finally {
       setLoadingUpdate(false);
     }
@@ -190,16 +216,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       const response = await del(`/v1/conversation/delete/${conversationId}`);
       if (response.result) {
-        console.log("Xóa nhóm thành công:", response);
+        console.log("Conversation deleted:", response);
       }
     } catch (error) {
-      setErrorMessage("Có lỗi xảy ra khi giải tán nhóm.");
+      setErrorMessage("Error deleting conversation.");
     }
   };
-
-  const filteredFriends = friends.filter((friend) =>
-    friend.friend.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const toggleMember = (userId: string) => {
     setSelectedMembers((prevMembers) =>
@@ -213,7 +235,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     async (pageNumber: number) => {
       if (!conversation._id) return;
       setIsLoadingMessages(true);
-
       try {
         setIsCanUpdate(Number(conversation.canUpdate));
         setIsCanMessage(Number(conversation.canMessage));
@@ -227,12 +248,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         const newMessages = response.data.content;
         if (pageNumber === 0) {
-          // First load - show newest messages
           setMessages(newMessages.reverse());
           setIsScrollToBottom(true);
         } else {
           const newMessagesReverse = newMessages.reverse();
-          // Loading more - add older messages to the beginning
           setMessages((prev) => [...newMessagesReverse, ...prev]);
         }
         setHasMore(newMessages.length === size);
@@ -251,7 +270,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       try {
         const res = await get(`/v1/message/get/${messageId}`);
         const newMessage = res.data;
-        // Add new message to the end of the list
         setMessages((prevMessages) => [...prevMessages, newMessage]);
         setIsScrollToBottom(true);
         onMessageChange();
@@ -264,11 +282,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleUpdateMessageSocket = useCallback(
     async (messageId: string) => {
-      console.log("Updating message socket:", messageId);
       try {
         const resMessage = await get(`/v1/message/get/${messageId}`);
         const updatedMessage = resMessage.data;
-
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg._id === updatedMessage._id ? updatedMessage : msg
@@ -276,7 +292,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         );
         onMessageChange();
       } catch (error) {
-        console.error("Error fetching updated message and reactions:", error);
+        console.error("Error updating message:", error);
       }
     },
     [get, onMessageChange]
@@ -300,13 +316,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsCanMessage(Number(resMessage.data.canMessage));
         setIsCanAddMember(Number(resMessage.data.canAddMember));
       } catch (error) {
-        console.error("Error fetching updated message and reactions:", error);
+        console.error("Error updating conversation:", error);
       }
     },
     [get]
   );
 
-  useSocketChat({
+  const socketChat = useSocketChat({
     conversationId: conversation._id,
     userId: userCurrent?._id,
     remoteUrl,
@@ -317,13 +333,395 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onHandleUpdateConversation: handleUpdateConversationSocket,
   });
 
+  const socketVideo = useSocketVideoCall({
+    socket: socketChat,
+    onVideoCallAccepted: async (data: any) => {
+      setReceiverInfo(null);
+      const receiverId = membersList.find(
+        (m) => m.user._id !== userCurrent?._id
+      )?.user._id;
+      if (data.receiverId === receiverId && peerConnectionRef.current) {
+        setReceiverInfo(data);
+        setIsCalling(false);
+        setIsVideoCallActive(true);
+        await createOffer();
+        // Bắt đầu đếm thời gian cuộc gọi
+        //setCallStartTime(new Date());
+        callDurationInterval.current = setInterval(() => {
+          setCallDuration((prev) => prev + 1);
+        }, 1000);
+      }
+    },
+    onVideoCallRejected: () => {
+      setIsCalling(false);
+    },
+    onOffer: async (data: any) => {
+      const receiverId = membersList.find(
+        (m) => m.user._id !== userCurrent?._id
+      )?.user._id;
+      if (data.from === receiverId && peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          await createAnswer();
+        } catch (error) {
+          console.error("ChatWindow: Error handling offer:", error);
+        }
+      }
+    },
+    onAnswer: async (data: any) => {
+      const receiverId = membersList.find(
+        (m) => m.user._id !== userCurrent?._id
+      )?.user._id;
+      if (data.from === receiverId && peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+        } catch (error) {
+          console.error("ChatWindow: Error handling answer:", error);
+        }
+      }
+    },
+    onIceCandidate: async (data: any) => {
+      const receiverId = membersList.find(
+        (m) => m.user._id !== userCurrent?._id
+      )?.user._id;
+      if (data.from === receiverId && peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          console.error("ChatWindow: Error adding ICE candidate:", error);
+        }
+      }
+    },
+    onEndCallWhileCallingByReceiver: () => {
+      endCallWhileCallingFromReceiver();
+    },
+    onEndCallByReceiver: () => {
+      handleEndCallByReceiver();
+    },
+  });
+
+  // Khởi tạo audio element khi component mount
+  useEffect(() => {
+    audioRef.current = new Audio(ringtone);
+    audioRef.current.loop = true; // Lặp lại âm thanh chuông
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Phát âm thanh chuông khi đang gọi
+  useEffect(() => {
+    if (isCalling && audioRef.current) {
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing ringtone:", error);
+      });
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // Reset thời gian phát
+    }
+  }, [isCalling]);
+
+  const startCall = async () => {
+    try {
+      const receiverId = membersList.find(
+        (m) => m.user._id !== userCurrent?._id
+      )?.user._id;
+      setReceiverInfo({
+        receiverId: receiverId,
+        receiverName: membersList.find((m) => m.user._id !== userCurrent?._id)
+          ?.user.displayName,
+        receiverAvatar: membersList.find((m) => m.user._id !== userCurrent?._id)
+          ?.user.avatarUrl,
+      });
+
+      if (!receiverId) {
+        console.error("No receiver found");
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream);
+      setIsCalling(true);
+      const pc = initializePeerConnection(receiverId);
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      socketVideo?.emit("START_VIDEO_CALL", {
+        conversationId: conversation._id,
+        callerId: userCurrent?._id,
+        callerName: userCurrent?.displayName,
+        callerAvatar: userCurrent?.avatarUrl,
+        receiverId: receiverId,
+      });
+    } catch (error) {
+      console.error("Error starting call:", error);
+      toast.error("Không thể truy cập camera hoặc micro.");
+    }
+  };
+
+  const createOffer = async () => {
+    const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
+      ?.user._id;
+    if (peerConnectionRef.current && receiverId) {
+      try {
+        const offer = await peerConnectionRef.current.createOffer();
+        await peerConnectionRef.current.setLocalDescription(offer);
+        socketVideo?.emit("OFFER", {
+          to: receiverId,
+          from: userCurrent?._id,
+          sdp: offer,
+        });
+      } catch (error) {
+        console.error("ChatWindow: Error creating offer:", error);
+      }
+    }
+  };
+
+  const createAnswer = async () => {
+    const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
+      ?.user._id;
+    if (peerConnectionRef.current && receiverId) {
+      try {
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socketVideo?.emit("ANSWER", {
+          to: receiverId,
+          from: userCurrent?._id,
+          sdp: answer,
+        });
+      } catch (error) {
+        console.error("ChatWindow: Error creating answer:", error);
+      }
+    }
+  };
+
+  const endCallWhileCalling = () => {
+    const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
+      ?.user._id;
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (receiverId) {
+      socketVideo?.emit("END_CALL_WHILE_CALLING_FROM_CALLER", {
+        receiverId: receiverId,
+      });
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsCalling(false);
+    handleSendMessageForChat("Cuộc gọi video bị nhỡ.");
+    // socketVideo?.emit("END_VIDEO_CALL", {
+    //   conversationId: conversation._id,
+    //   callerId: userCurrent?._id,
+    //   receiverId,
+    //   message: "Cuộc gọi video đã kết thúc",
+    // });
+    peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    console.log("Call ended while calling by caller ChatWindow");
+  };
+
+  const endCallWhileCallingFromReceiver = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsCalling(false);
+    handleSendMessageForChat("Cuộc gọi video bị nhỡ.");
+    // socketVideo?.emit("END_VIDEO_CALL", {
+    //   conversationId: conversation._id,
+    //   callerId: userCurrent?._id,
+    //   receiverId,
+    //   message: "Cuộc gọi video đã kết thúc",
+    // });
+    peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    console.log("Call ended while calling by receiver ChatWindow");
+  };
+
+  // Auto-dismiss incoming call after timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (isCalling) {
+      // Auto-dismiss after 30 seconds if not answered or rejected
+      timeoutId = setTimeout(() => {
+        console.log("Auto-dismissing incoming call after timeout");
+        const receiverId = membersList.find(
+          (m) => m.user._id !== userCurrent?._id
+        )?.user._id;
+        if (localStream) {
+          localStream.getTracks().forEach((track) => track.stop());
+          setLocalStream(null);
+        }
+        if (receiverId) {
+          socketVideo?.emit("END_CALL_WHILE_CALLING_FROM_CALLER", {
+            receiverId: receiverId,
+          });
+        }
+        if (peerConnectionRef.current) {
+          peerConnectionRef.current.close();
+          peerConnectionRef.current = null;
+        }
+        setRemoteStream(null);
+        setIsCalling(false);
+        handleSendMessageForChat("Cuộc gọi video bị nhỡ.");
+        // socketVideo?.emit("END_VIDEO_CALL", {
+        //   conversationId: conversation._id,
+        //   callerId: userCurrent?._id,
+        //   receiverId,
+        //   message: "Cuộc gọi video đã kết thúc",
+        // });
+        peerConnectionRef.current = null;
+        console.log("Call ended while calling by caller ChatWindow");
+      }, 30000); // 30 seconds timeout
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isCalling, socketVideo, userCurrent]);
+
+  const endCall = () => {
+    const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
+      ?.user._id;
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (receiverId) {
+      socketVideo?.emit("END_VIDEO_CALL_FROM_CALLER", {
+        receiverId: receiverId,
+      });
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    // Dừng interval đếm thời gian
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    //setCallStartTime(null);
+    // socketVideo?.emit("END_VIDEO_CALL", {
+    //   conversationId: conversation._id,
+    //   callerId: userCurrent?._id,
+    //   receiverId,
+    //   message: "Cuộc gọi video đã kết thúc",
+    // });
+    peerConnectionRef.current = null;
+    console.log("Call ended by caller ChatWindow");
+  };
+
+  const handleEndCallByReceiver = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    // Dừng interval đếm thời gian
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    //setCallStartTime(null);
+    peerConnectionRef.current = null;
+    console.log("Call ended by caller ChatWindow");
+  };
+
+  const handleEndCallByCaller = () => {
+    const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
+      ?.user._id;
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (receiverId) {
+      socketVideo?.emit("END_VIDEO_CALL_FROM_CALLER", {
+        receiverId: receiverId,
+      });
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+    const duration = formatCallDuration(callDuration);
+    console.log("duration chatwindow end:", duration);
+    const message = `Cuộc gọi video (${duration})`;
+    handleSendMessageForChat(message);
+    if (callDurationInterval.current) {
+      clearInterval(callDurationInterval.current);
+      callDurationInterval.current = null;
+      console.log("Call duration interval cleared");
+    }
+    setCallDuration(0);
+    //setCallStartTime(null);
+    peerConnectionRef.current = null;
+    console.log("Call ended by caller ChatWindow");
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    scrollToBottom();
-    setIsScrollToBottom(false);
+    if (isScrollToBottom) {
+      scrollToBottom();
+      setIsScrollToBottom(false);
+    }
   }, [isScrollToBottom]);
 
   useEffect(() => {
@@ -337,26 +735,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleScroll = async () => {
-    if (
-      scrollContainerRef.current &&
-      scrollContainerRef.current.scrollTop === 0 &&
-      !isLoadingMessages &&
-      hasMore
-    ) {
-      const firstMessage = scrollContainerRef.current.firstElementChild;
-      const previousScrollTop = scrollContainerRef.current.scrollTop;
-      const previousOffsetTop = firstMessage
-        ? (firstMessage as HTMLElement).offsetTop
-        : 0;
-
-      await fetchMessages(page + 1);
-
-      if (firstMessage) {
-        scrollContainerRef.current.scrollTop =
-          (firstMessage as HTMLElement).offsetTop -
-          previousOffsetTop +
-          previousScrollTop;
-      }
+    if (hasMore && !isLoadingMessages) {
+      fetchMessages(page + 1);
     }
   };
 
@@ -370,12 +750,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setIsSendingMessage(true);
 
     let imageUrl: string | null = null;
-
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage, post);
     }
-
-    console.log("Image URL:", imageUrl);
 
     try {
       const encryptedMessage = encrypt(
@@ -387,13 +764,33 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         content: encryptedMessage,
         imageUrl: imageUrl,
       });
-
       setNewMessage("");
       removeSelectedImage();
     } catch (error) {
-      console.error("Error creating message:", error);
+      console.error("Error sending message:", error);
     } finally {
       setIsSendingMessage(false);
+    }
+  };
+
+  const formatCallDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  const handleSendMessageForChat = async (newMessage: string) => {
+    try {
+      const encryptedMessage = encrypt(
+        newMessage.trim(),
+        userCurrent?.secretKey
+      );
+      await post("/v1/message/create", {
+        conversation: conversation._id,
+        content: encryptedMessage,
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
     }
   };
 
@@ -412,36 +809,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ) => {
     try {
       const encryptedMessage = encrypt(content.trim(), userCurrent?.secretKey);
-
       const response = await put("/v1/message/update", {
         id: messageId,
         content: encryptedMessage,
         imageUrl: imageUrl,
       });
-
       if (response.result) {
-        // Update the message in the local state
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg._id === messageId
-              ? {
-                  ...msg,
-                  content: encryptedMessage,
-                  imageUrl: imageUrl,
-                }
+              ? { ...msg, content: encryptedMessage, imageUrl: imageUrl }
               : msg
           )
         );
         setEditingMessageId(null);
         setEditedMessage("");
         setEditedImageUrl("");
-        toast.success("Cập nhật tin nhắn thành công!");
-      } else {
-        toast.error("Có lỗi xảy ra khi cập nhật tin nhắn");
       }
     } catch (error) {
       console.error("Error updating message:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật tin nhắn");
+      toast.error("Error updating message");
     }
   };
 
@@ -450,27 +837,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       if (messages.find((msg) => msg._id === messageId)?.isReacted === 1) {
         await del(`/v1/message-reaction/delete/${messageId}`);
       } else {
-        await post("/v1/message-reaction/create", {
-          message: messageId,
-        });
+        await post("/v1/message-reaction/create", { message: messageId });
       }
     } catch (error) {
       console.error("Error handling reaction:", error);
     }
   };
 
-  const toggleDropdown = (messageId: string) => {
-    setActiveDropdown(activeDropdown === messageId ? null : messageId);
-  };
+  // const toggleDropdown = (messageId: string) => {
+  //   setActiveDropdown(activeDropdown === messageId ? null : messageId);
+  // };
 
   const fetchFriends = async () => {
     try {
-      const response = await get("/v1/friendship/list", {
-        getListKind: 0,
-      });
-      console.log("List ban be:", response.data.content);
+      const response = await get("/v1/friendship/list", { getListKind: 0 });
       setFriends(response.data.content);
-
       const membersResponse = await get(`/v1/conversation-member/list`, {
         conversation: conversation._id,
       });
@@ -489,12 +870,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         conversation: conversation._id,
         users: selectedMembers,
       });
-      console.log("Response add member:", response.result);
       if (!response.result) {
-        setErrorMessage(
-          response.message || "Có lỗi xảy ra khi thêm thành viên."
-        );
-        console.error("Error adding members:", response.message);
+        setErrorMessage("Error adding members.");
         setIsAddMemberModalOpen(false);
         setIsAlertErrorDialogOpen(true);
         return;
@@ -504,7 +881,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setSelectedMembers([]);
       onConversationUpdateInfo(conversation);
     } catch (error) {
-      setErrorMessage("Có lỗi xảy ra khi thêm thành viên.");
+      setErrorMessage("Error adding members.");
       setIsAlertErrorDialogOpen(true);
       console.error("Error adding members:", error);
     } finally {
@@ -521,23 +898,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   ) => {
     try {
-      const responsePermission = await put("/v1/conversation/permission", {
-        id: id,
-        ...permissions,
-      });
-      console.log("Response permission:", responsePermission);
-      if (permissions.canMessage !== undefined) {
+      await put("/v1/conversation/permission", { id: id, ...permissions });
+      if (permissions.canMessage !== undefined)
         setIsCanMessage(Number(permissions.canMessage));
-      }
-      if (permissions.canUpdate !== undefined) {
+      if (permissions.canUpdate !== undefined)
         setIsCanUpdate(Number(permissions.canUpdate));
-      }
-      if (permissions.canAddMember !== undefined) {
+      if (permissions.canAddMember !== undefined)
         setIsCanAddMember(Number(permissions.canAddMember));
-      }
     } catch (error) {
-      console.error("Error updating conversation permissions:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật quyền cuộc trò chuyện");
+      console.error("Error updating permissions:", error);
+      toast.error("Error updating conversation permissions");
     }
   };
 
@@ -545,7 +915,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setLoadingUpdate(true);
     setError(null);
     try {
-      console.log("Data to send", formData);
       const response = await put("/v1/conversation/update", formData);
       if (!response.result) {
         setError(response.message);
@@ -554,7 +923,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsEditDialogOpen(false);
       onMessageChange();
       onConversationUpdateInfo(conversation);
-      toast.success("Cập nhật thông tin cuộc trò chuyện thành công!");
+      toast.success("Conversation updated successfully!");
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -564,9 +933,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const removeSelectedImage = () => {
     setSelectedImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleForwardMessage = (friendObject: Friends) => {
@@ -587,10 +954,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             fetchFriends();
             setIsAddMemberModalOpen(true);
           } else {
-            toast.error(
-              "Bạn không có quyền thêm thành viên vào cuộc trò chuyện này!"
-            );
-            return;
+            toast.error("You don't have permission to add members!");
           }
         }}
         onManageMembersClick={() => setIsManageMembersModalOpen(true)}
@@ -605,21 +969,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }}
         onMemberListClick={() => setIsMemberListOpen(true)}
         onMessageSelect={async (messageId: string) => {
-          let messageElement: HTMLElement | null =
-            document.getElementById(messageId);
+          let messageElement = document.getElementById(messageId);
           if (messageElement) {
             messageElement.scrollIntoView({
               behavior: "smooth",
               block: "center",
             });
             messageElement.classList.add("bg-blue-100");
-            setTimeout(() => {
-              messageElement?.classList.remove("bg-blue-100");
-            }, 2000);
+            setTimeout(
+              () => messageElement?.classList.remove("bg-blue-100"),
+              2000
+            );
           } else {
             let page = 0;
             let messageFound = false;
-
             while (!messageFound) {
               await fetchMessages(page);
               messageElement = document.getElementById(messageId);
@@ -630,16 +993,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   block: "center",
                 });
                 messageElement.classList.add("bg-blue-100");
-                setTimeout(() => {
-                  messageElement?.classList.remove("bg-blue-100");
-                }, 5000);
+                setTimeout(
+                  () => messageElement?.classList.remove("bg-blue-100"),
+                  5000
+                );
               } else {
                 page++;
               }
             }
           }
         }}
+        onStartVideoCall={startCall}
       />
+
+      {isCalling && (
+        <CallingPopup
+          receiverId={receiverInfo?.receiverId}
+          receiverName={receiverInfo?.receiverName}
+          receiverAvatar={receiverInfo?.receiverAvatar}
+          onCancelCall={() => {
+            endCallWhileCalling();
+          }}
+        />
+      )}
+
+      {isVideoCallActive && (
+        <VideoCallModal
+          localStream={localStream}
+          remoteStream={remoteStream}
+          callerName={userCurrent?.displayName || ""}
+          callerAvatar={userCurrent?.avatarUrl || ""}
+          receiverName={receiverInfo?.receiverName}
+          receiverAvatar={receiverInfo?.receiverAvatar}
+          onEndCall={handleEndCallByCaller}
+        />
+      )}
 
       <MessageList
         messages={messages}
@@ -663,11 +1051,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onReaction={handleReaction}
         onToggleDropdown={setActiveDropdown}
         onAvatarClick={handleAvatarClick}
-        onScroll={() => {
-          if (hasMore && !isLoadingMessages) {
-            fetchMessages(page + 1);
-          }
-        }}
+        onScroll={handleScroll}
         isScrollToBottom={isScrollToBottom}
         onUpdateMessage={handleUpdateMessage}
       />
@@ -682,9 +1066,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onMessageChange={(e) => setNewMessage(e.target.value)}
         onImageSelected={(e) => {
           const file = e.target.files?.[0];
-          if (file) {
-            setSelectedImage(file);
-          }
+          if (file) setSelectedImage(file);
         }}
         onRemoveSelectedImage={removeSelectedImage}
         onSubmit={handleSendMessage}
@@ -697,13 +1079,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         selectedMembers={selectedMembers}
         conversationMembersIdList={conversationMembersIdList}
         onSearchChange={(e) => setSearchQuery(e.target.value)}
-        onToggleMember={(userId) => {
-          setSelectedMembers((prevMembers) =>
-            prevMembers.includes(userId)
-              ? prevMembers.filter((id) => id !== userId)
-              : [...prevMembers, userId]
-          );
-        }}
+        onToggleMember={toggleMember}
         onClose={() => setIsAddMemberModalOpen(false)}
         onAddMember={handleAddMember}
       />
@@ -735,27 +1111,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <AlertDialog
         isVisible={isAlertDialogOpen}
-        title="Thành công"
-        message="Bạn đã thêm thành viên thành công!"
-        onAccept={() => {
-          setIsAlertDialogOpen(false);
-        }}
+        title="Success"
+        message="Members added successfully!"
+        onAccept={() => setIsAlertDialogOpen(false)}
       />
 
       <AlertErrorDialog
         isVisible={isAlertErrorDialogOpen}
-        title="Thất bại"
+        title="Failed"
         message={errorMessage}
-        onAccept={() => {
-          setIsAlertErrorDialogOpen(false);
-        }}
+        onAccept={() => setIsAlertErrorDialogOpen(false)}
       />
 
       <ConfimationDialog
         isVisible={isConfirmDelMemDialogOpen}
-        title="Xác nhận"
+        title="Confirm"
         color="red"
-        message="Bạn có chắc chắn muốn xoá thành viên này ra khỏi nhóm?"
+        message="Are you sure you want to remove this member?"
         onConfirm={() => {
           handleRemoveMember(memberIdSelected);
           setIsConfirmDelMemDialogOpen(false);
@@ -765,9 +1137,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <ConfimationDialog
         isVisible={isConfirmDialogOpen}
-        title="Xác nhận"
+        title="Confirm"
         color="red"
-        message="Bạn có chắc chắn muốn giải tán nhóm?"
+        message="Are you sure you want to disband the group?"
         onConfirm={() => {
           handleDisbandGroup();
           setIsConfirmDialogOpen(false);
@@ -777,9 +1149,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <ConfimationDialog
         isVisible={isConfirmLeaveDialogOpen}
-        title="Xác nhận"
+        title="Confirm"
         color="red"
-        message="Bạn có chắc chắn muốn rời nhóm?"
+        message="Are you sure you want to leave the group?"
         onConfirm={() => {
           handleLeaveGroup(memberIdSelected);
           setIsConfirmLeaveDialogOpen(false);
@@ -803,13 +1175,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <LoadingDialog isVisible={isLoadingUpdate} />
 
-      {error &&
-        AlertErrorDialog({
-          isVisible: true,
-          title: "Thất bại",
-          message: error,
-          onAccept: () => setError(null),
-        })}
+      {error && (
+        <AlertErrorDialog
+          isVisible={true}
+          title="Failed"
+          message={error}
+          onAccept={() => setError(null)}
+        />
+      )}
     </div>
   );
 };

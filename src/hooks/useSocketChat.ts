@@ -33,60 +33,54 @@ export const useSocketChat = ({
     });
 
     socket.on("connect", () => {
-      console.log("Socket.IO Connected");
-      if (conversationId) {
-        socket.emit("JOIN_CONVERSATION", conversationId);
-      }
+      console.log("Socket.IO Chat Connected with ID:", socket.id);
+      if (conversationId) socket.emit("JOIN_CONVERSATION", conversationId);
       if (userId) {
         socket.emit("JOIN_USER", userId);
         socket.emit("JOIN_NOTIFICATION", userId);
       }
     });
 
-    socket.on("disconnect", (reason: any) => {
-      console.log("Socket.IO Disconnected:", reason);
+    socket.on("disconnect", (reason) => {
+      console.log("Socket.IO Chat Disconnected:", reason);
     });
 
     socket.on("CREATE_MESSAGE", (messageId: string) => {
       onNewMessage(messageId);
-      if (onConversationUpdate) {
-        onConversationUpdate();
-      }
+      if (onConversationUpdate) onConversationUpdate();
     });
 
     socket.on("UPDATE_MESSAGE", (messageId: string) => {
       onUpdateMessage(messageId);
-      if (onConversationUpdate) {
-        onConversationUpdate();
-      }
+      if (onConversationUpdate) onConversationUpdate();
     });
 
     socket.on("DELETE_MESSAGE", (messageId: string) => {
       onDeleteMessage(messageId);
-      if (onConversationUpdate) {
-        onConversationUpdate();
-      }
+      if (onConversationUpdate) onConversationUpdate();
     });
 
-    socket.on("NEW_NOTIFICATION", (userId: string) => {
-      if (onConversationUpdate) {
-        onConversationUpdate();
-      }
+    socket.on("NEW_NOTIFICATION", () => {
+      if (onConversationUpdate) onConversationUpdate();
     });
 
     socket.on("UPDATE_CONVERSATION", (conversationId: string) => {
       onHandleUpdateConversation(conversationId);
     });
 
+    socket.on("UPDATE_LAST_READ", (data) => {
+      console.log("UPDATE_LAST_READ socket FE", data);
+      if (onConversationUpdate) onConversationUpdate();
+    });
+
     socketRef.current = socket;
 
     return () => {
       if (socketRef.current) {
-        if (conversationId) {
-          socket.emit("LEAVE_CONVERSATION", conversationId);
-        }
+        if (conversationId) socket.emit("LEAVE_CONVERSATION", conversationId);
         if (userId) {
           socket.emit("LEAVE_USER", userId);
+          socket.emit("LEAVE_NOTIFICATION", userId);
         }
         socket.disconnect();
       }
@@ -99,6 +93,7 @@ export const useSocketChat = ({
     onUpdateMessage,
     onDeleteMessage,
     onConversationUpdate,
+    onHandleUpdateConversation,
   ]);
 
   useEffect(() => {

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import PostItem from './PostItem';
 import StoryViewer from '../story/StoryViewer';
-import { useLoading } from '../../../hooks/useLoading';
-import { remoteUrl } from '../../../types/constant';
-import { toast } from 'react-toastify';
+//import { useLoading } from '../../../hooks/useLoading';
+//import { remoteUrl } from '../../../types/constant';
+//import { toast } from 'react-toastify';
 import InputField from '../../InputField';
 import { Search } from 'lucide-react';
 import { LoadingDialog } from '../../Dialog';
@@ -14,7 +14,7 @@ import { FriendModel } from '../../../models/friend/friendModel';
 const FriendsPosts = () => {
   const [posts, setPosts] = useState<PostModel[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const { isLoading, showLoading, hideLoading } = useLoading();
+  //const { isLoading, showLoading, hideLoading } = useLoading();
   const [friends, setFriends] = useState<FriendModel[]>([]);
   const { get, loading } = useFetch();
 
@@ -62,11 +62,11 @@ const FriendsPosts = () => {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
+  const handleDeletePost = async () => {
     fetchPosts(); // Tải lại danh sách bài viết
   };
 
-  const handleEditPost = async (postId: string) => {
+  const handleEditPost = async () => {
     fetchPosts(); // Tải lại danh sách bài viết
   };
 
@@ -101,8 +101,8 @@ const FriendsPosts = () => {
               <PostItem
                 key={post._id}
                 postItem={post}
-                onEdit={() => handleEditPost(post._id)}
-                onDelete={() => handleDeletePost(post._id)}
+                onEdit={() => handleEditPost()}
+                onDelete={() => handleDeletePost()}
               />
             ))
           ) : (
