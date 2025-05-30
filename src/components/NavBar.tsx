@@ -6,7 +6,6 @@ import {
   User,
   LogOut,
   Bot,
-  MessageSquare,
   Bookmark,
   UsersRound,
 } from "lucide-react";
@@ -28,7 +27,7 @@ const NavBar: React.FC<NavBarProps> = ({ setSelectedSection }) => {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState("messages");
-  const [selectedGroupType, setSelectedGroupType] = useState("myGroups");
+  //const [selectedGroupType, setSelectedGroupType] = useState("myGroups");
   const navigate = useNavigate();
   const { isDialogVisible, showDialog, hideDialog } = useDialog();
   const { setProfile } = useProfile();
