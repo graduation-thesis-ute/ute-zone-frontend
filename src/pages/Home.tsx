@@ -14,10 +14,12 @@ import PostListItem from "../components/post/pages/PostListItem";
 import MyPosts from "../components/post/pages/MyPosts";
 import FriendsPosts from "../components/post/pages/FriendsPosts";
 import CommunityPosts from "../components/post/pages/CommunityPosts";
+import Page from "./Page";
+import Group from "./Group";
 import useSocketChat from "../hooks/useSocketChat";
 import { useSocketVideoCall } from "../hooks/useSocketVideoCall";
 import { remoteUrl } from "../types/constant";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Bookmark, Users, Globe } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
 //import { useProfile } from "../types/UserContext";
@@ -40,12 +42,14 @@ const Home = () => {
   const [selectedSection, setSelectedSection] = useState("messages");
   const [selectedFriendSection, setSelectedFriendSection] = useState("friends");
   const [selectedPostSection, setSelectedPostSection] = useState("posts");
+  const [selectedPageType, setSelectedPageType] = useState("my-pages");
+  const [selectedGroupType, setSelectedGroupType] = useState("my-groups");
   const [userCurrent, setUserCurrent] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [isLoading] = useState(false);
-  const { get, put } = useFetch();
+  const { get, put , post} = useFetch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
@@ -458,6 +462,84 @@ const Home = () => {
             selectedPostSection={selectedPostSection}
             setSelectedPostSection={setSelectedPostSection}
           />
+        ) : selectedSection === "pages" ? (
+          <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Pages</h2>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setSelectedPageType("my-pages")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "my-pages"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Bookmark size={20} />
+                <span>Trang của tôi</span>
+              </button>
+              <button
+                onClick={() => setSelectedPageType("followed")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "followed"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Trang đã follow</span>
+              </button>
+              <button
+                onClick={() => setSelectedPageType("community")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedPageType === "community"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Globe size={20} />
+                <span>Trang cộng đồng</span>
+              </button>
+            </div>
+          </div>
+        ) : selectedSection === "groups" ? (
+          <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Groups</h2>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setSelectedGroupType("my-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "my-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Nhóm của tôi</span>
+              </button>
+              <button
+                onClick={() => setSelectedGroupType("joined-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "joined-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Users size={20} />
+                <span>Nhóm đã tham gia</span>
+              </button>
+              <button
+                onClick={() => setSelectedGroupType("community-groups")}
+                className={`flex items-center space-x-2 py-2 px-4 rounded ${
+                  selectedGroupType === "community-groups"
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-500 hover:bg-gray-300"
+                }`}
+              >
+                <Globe size={20} />
+                <span>Nhóm cộng đồng</span>
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -527,6 +609,14 @@ const Home = () => {
                 <NotificationPanel />
               </div>
             )}
+          </div>
+        ) : selectedSection === "pages" ? (
+          <div className="h-full">
+            <Page pageId={selectedPageType} setSelectedPageType={setSelectedPageType} />
+          </div>
+        ) : selectedSection === "groups" ? (
+          <div className="h-full">
+            <Group groupId={selectedGroupType} setSelectedGroupType={setSelectedGroupType} />
           </div>
         ) : null}
       </div>
