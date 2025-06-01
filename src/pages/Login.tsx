@@ -3,15 +3,14 @@ import InputField from "../components/InputField";
 import { useEffect, useState } from "react";
 import { useLoading } from "../hooks/useLoading";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
 import { remoteUrl } from "../types/constant";
 import Button from "../components/Button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LoadingDialog } from "../components/Dialog";
 import UTELogo from "../assets/ute_logo_hcmute.png";
 import LoginPageLogo from "../assets/login-page.png";
-import GoogleIcon from "../assets/google.png";
-import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -27,13 +26,18 @@ const Login = () => {
     password: "",
   });
 
+  // Kiểm tra lỗi từ query parameter
   useEffect(() => {
+    console.log("location", location);
     const queryParams = new URLSearchParams(location.search);
     const error = queryParams.get("error");
     const token = queryParams.get("token");
 
+    console.log("Query params:", { error, token }); // Debug query params
+
     if (error) {
       const decodedError = decodeURIComponent(error);
+      console.log("Detected error:", decodedError);
       toast.error(decodedError, {
         autoClose: 5000,
         position: "top-right",
@@ -45,20 +49,25 @@ const Login = () => {
     }
 
     if (token) {
+      console.log("Detected token:", token);
       localStorage.setItem("accessToken", token);
       navigate("/");
+      // Trì hoãn reload để đảm bảo toast hiển thị (nếu cần)
       setTimeout(() => {
         window.location.reload();
       }, 500);
     }
   }, [location, navigate]);
 
+  // Validation
   const validate = (field: string, value: string) => {
     const newErrors = { ...errors };
     if (field === "username") {
-      newErrors.username = !value.trim()
-        ? "Tên đăng nhập không được bỏ trống"
-        : "";
+      if (!value.trim()) {
+        newErrors.username = "Tên đăng nhập không được bỏ trống";
+      } else {
+        newErrors.username = "";
+      }
     }
     if (field === "password") {
       if (!value.trim()) {
@@ -94,6 +103,7 @@ const Login = () => {
     return isValid;
   };
 
+  // Xử lý đăng nhập thông thường
   const handleSubmit = async () => {
     if (!validateForm()) {
       toast.error("Vui lòng điền đầy đủ thông tin");
@@ -106,7 +116,10 @@ const Login = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          username: form.username,
+          password: form.password,
+        }),
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -123,6 +136,7 @@ const Login = () => {
     }
   };
 
+  // Xử lý đăng nhập Google
   const handleGoogleSuccess = async (credentialResponse: any) => {
     showLoading();
     try {
@@ -151,14 +165,6 @@ const Login = () => {
       hideLoading();
     }
   };
-
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: handleGoogleSuccess,
-    onError: () => {
-      toast.error("Đăng nhập Google thất bại");
-    },
-    flow: "implicit",
-  });
 
   return (
     <div className="min-h-screen flex bg-blue-500">
@@ -215,13 +221,19 @@ const Login = () => {
           </div>
 
           <div className="mt-4">
-            <button
-              onClick={() => loginWithGoogle()}
-              className="w-full h-12 bg-white text-gray-700 font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-3 border border-gray-200 hover:bg-gray-50"
-            >
-              <img src={GoogleIcon} alt="Google" className="w-6 h-6" />
-              <span>Đăng nhập bằng Google</span>
-            </button>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                toast.error("Đăng nhập Google thất bại");
+              }}
+              useOneTap
+              theme="filled_blue"
+              text="signin_with"
+              shape="rectangular"
+              locale="vi"
+              width="100%"
+              size="large"
+            />
           </div>
 
           <p className="mt-4 text-center">
