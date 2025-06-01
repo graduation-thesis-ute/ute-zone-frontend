@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Loader2, Search, Filter, MoreVertical } from 'lucide-react';
+import { Plus, Loader2, Search, Filter } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { Page, PageResponse } from '../../models/page/Page';
 import PageProfileCard from './PageProfileCard';

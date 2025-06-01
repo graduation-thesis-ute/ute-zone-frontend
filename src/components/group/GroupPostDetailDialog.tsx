@@ -15,8 +15,7 @@ import {
   AlertCircle,
   Frown,
   Angry,
-  Smile,
-  Users
+  Smile
 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { uploadImage2 } from '../../types/utils';
@@ -86,12 +85,12 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+ // const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [isCheckingLike, setIsCheckingLike] = useState(false);
+  //const [isCheckingLike, setIsCheckingLike] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { get, post: postComment } = useFetch();
-  const [totalPages, setTotalPages] = useState(0);
+  //const [totalPages, setTotalPages] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<number | null>(null);
@@ -129,7 +128,7 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
       console.log('Post ID in dialog:', post.id);
       setComments([]);
       setCurrentPage(0);
-      setTotalPages(0);
+      //setTotalPages(0);
       setReplyingTo(null);
       setReplyContent('');
       setReplyImagePreview(null);
@@ -212,7 +211,7 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
         setComments(prev => [...prev, ...newComments]);
       }
       setHasMore(currentPage < response.data.totalPages - 1);
-      setTotalPages(response.data.totalPages);
+     // setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error('Error fetching comments:', error);
     } finally {
@@ -222,7 +221,7 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
 
   const checkIfLiked = async () => {
     try {
-      setIsCheckingLike(true);
+      //setIsCheckingLike(true);
       const response = await get(`/v1/group-post-reaction/list`, {
         groupPost: post.id,
         isPaged: '0'
@@ -247,7 +246,7 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
       setLiked(false);
       setCurrentReaction(null);
     } finally {
-      setIsCheckingLike(false);
+      //setIsCheckingLike(false);
     }
   };
 
@@ -353,7 +352,7 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
   const handleClose = () => {
     setComments([]);
     setCurrentPage(0);
-    setTotalPages(0);
+    //setTotalPages(0);
     setSelectedImageIndex(null);
     onClose();
   };

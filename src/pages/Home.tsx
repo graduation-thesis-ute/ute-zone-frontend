@@ -49,7 +49,7 @@ const Home = () => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [isLoading] = useState(false);
-  const { get, put , post} = useFetch();
+  const { get, put } = useFetch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 

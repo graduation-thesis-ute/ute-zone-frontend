@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, Search, Filter, ThumbsUp, MessageCircle, Share2, Bookmark, Copy, Check } from 'lucide-react';
+import { Loader2, Search, Filter, ThumbsUp, MessageCircle, Share2, Check } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
 import PostDetailDialog from './PostDetailDialog';

@@ -4,7 +4,7 @@ interface PageFollowersProps {
   pageId: string;
 }
 
-const PageFollowers: React.FC<PageFollowersProps> = ({ pageId }) => {
+const PageFollowers: React.FC<PageFollowersProps> = ({ pageId: _pageId }) => {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Page Followers</h2>

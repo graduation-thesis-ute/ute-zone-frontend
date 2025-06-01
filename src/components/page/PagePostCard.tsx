@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share2, MoreHorizontal, ThumbsUp } from 'lucide-react';
+import {  MessageCircle, Share2, MoreHorizontal, ThumbsUp } from 'lucide-react';
 import { PagePost } from '../../models/page/PagePost';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';

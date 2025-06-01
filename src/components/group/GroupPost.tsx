@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Users } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
 import GroupPostDetailDialog from './GroupPostDetailDialog';
 
 interface GroupPostProps {

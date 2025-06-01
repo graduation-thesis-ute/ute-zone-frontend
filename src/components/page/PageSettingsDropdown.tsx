@@ -1,5 +1,5 @@
 import React from 'react';
-import { MoreVertical, Edit, Users, Trash2, Globe } from 'lucide-react';
+import {  Edit, Users, Trash2, Globe } from 'lucide-react';
 
 interface PageSettingsDropdownProps {
   isOpen: boolean;
