@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   LockIcon,
   MailIcon,
@@ -7,6 +7,7 @@ import {
   Loader,
 } from "lucide-react";
 import InputField from "../InputField";
+import { PhonePattern } from "../../types/constant";
 
 interface VerificationModalProps {
   isVisible: boolean;
@@ -39,6 +40,21 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
   handleVerificationChange,
   verificationErrors,
 }) => {
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const handleTempValueChange = (value: string) => {
+    setTempSensitiveValue(value);
+    if (sensitiveFieldToEdit === "phone") {
+      if (!value) {
+        setPhoneError("Số điện thoại không được để trống");
+      } else if (!PhonePattern.test(value)) {
+        setPhoneError("Số điện thoại không hợp lệ");
+      } else {
+        setPhoneError(null);
+      }
+    }
+  };
+
   if (!isVisible) return null;
 
   return (
@@ -78,7 +94,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
           } mới`}
           isRequire={true}
           placeholder={`Nhập ${sensitiveFieldToEdit} mới`}
-          onChangeText={setTempSensitiveValue}
+          onChangeText={handleTempValueChange}
           value={tempSensitiveValue}
           icon={
             sensitiveFieldToEdit === "email"
@@ -87,6 +103,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
               ? PhoneIcon
               : IdCardIcon
           }
+          error={phoneError}
         />
 
         <div className="flex justify-end space-x-3 mt-6">
@@ -99,7 +116,9 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
           </button>
           <button
             onClick={onSubmit}
-            disabled={loading}
+            disabled={
+              loading || (sensitiveFieldToEdit === "phone" && !!phoneError)
+            }
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center disabled:opacity-50"
           >
             {loading ? (
