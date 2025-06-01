@@ -13,11 +13,11 @@ import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toasti
 import PagePostDetail from "./components/page/PagePostDetail";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { post, loading } = useFetch();
-
-  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     const checkToken = async () => {
