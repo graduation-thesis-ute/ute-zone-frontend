@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Image as ImageIcon, Upload } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { toast } from 'react-toastify';
 import { uploadImage2 } from '../../types/utils';

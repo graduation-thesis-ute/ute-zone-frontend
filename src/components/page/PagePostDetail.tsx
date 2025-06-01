@@ -17,7 +17,7 @@ interface Comment {
 }
 
 const PagePostDetail: React.FC = () => {
-  const { pageId, postId } = useParams<{ pageId: string; postId: string }>();
+  const { postId } = useParams<{postId: string }>();
   const [post, setPost] = useState<PagePost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);

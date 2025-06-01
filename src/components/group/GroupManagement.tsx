@@ -5,22 +5,13 @@ import {
     Image,
     FileText,
     Settings,
-    Plus,
-    CheckCircle,
     UserPlus,
     Clock,
     Shield,
-    MoreVertical,
-    ChevronDown,
     Globe,
     Lock,
     Trash2,
     Edit,
-    X,
-    ThumbsUp,
-    MessageCircle,
-    Share2,
-    MoreHorizontal,
     CheckSquare,
     Square
 } from 'lucide-react';
@@ -84,6 +75,9 @@ interface GroupPost {
     };
     isOwner?: number;
     updatedAt?: string;
+    totalReactions?: number;
+    totalComments?: number;
+    totalShares?: number;
 }
 
 interface GroupPostResponse {
@@ -100,7 +94,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     const [activeTab, setActiveTab] = useState('posts');
     const [group, setGroup] = useState<GroupData | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
-    const [memberCount, setMemberCount] = useState(0);
+    //const [memberCount, setMemberCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isMembersLoading, setIsMembersLoading] = useState(false);
     const { get, put, del } = useFetch();
@@ -147,7 +141,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                     const response = await get('/v1/group-member/list', { group: groupId });
                     const memberResponse = response.data as GroupMemberResponse;
                     setMembers(memberResponse.content);
-                    setMemberCount(memberResponse.totalElements);
+                   // setMemberCount(memberResponse.totalElements);
                     
                     // Check if current user is the group owner
                     const currentUserMember = memberResponse.content.find(
@@ -561,7 +555,14 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
             ) : posts.length > 0 ? (
                 posts.map(post => {
                     const postId = post._id || (post as any).id;
-                    return <GroupPost key={postId} post={post} />;
+                    const mappedPost = {
+                        ...post,
+                        id: postId,
+                        totalReactions: post.totalReactions || 0,
+                        totalComments: post.totalComments || 0,
+                        totalShares: post.totalShares || 0
+                    };
+                    return <GroupPost key={postId} post={mappedPost} />;
                 })
             ) : (
                 <div key="no-posts" className="text-center text-gray-500 py-8">
@@ -629,7 +630,13 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                                             )}
                                         </button>
                                     </div>
-                                    <GroupPost key={`post-${postId}`} post={post} />
+                                    <GroupPost key={`post-${postId}`} post={{
+                                        ...post,
+                                        id: postId,
+                                        totalReactions: post.totalReactions || 0,
+                                        totalComments: post.totalComments || 0,
+                                        totalShares: post.totalShares || 0
+                                    }} />
                                     <div className="px-4 py-2 border-t border-gray-200 flex justify-end space-x-2">
                                         <button
                                             onClick={() => handleApprovePost(postId)}

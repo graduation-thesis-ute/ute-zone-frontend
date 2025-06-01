@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus } from 'lucide-react';
+import { Users } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { useProfile } from '../../types/UserContext';
 
