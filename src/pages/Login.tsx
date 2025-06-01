@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { LoadingDialog } from "../components/Dialog";
 import UTELogo from "../assets/ute_logo_hcmute.png";
 import LoginPageLogo from "../assets/login-page.png";
+import GoogleIcon from "../assets/google.png";
 import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
@@ -221,19 +222,35 @@ const Login = () => {
           </div>
 
           <div className="mt-4">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => {
-                toast.error("Đăng nhập Google thất bại");
+            <button
+              onClick={() => {
+                const googleLoginButton = document.querySelector(
+                  'div[role="button"]'
+                ) as HTMLElement;
+                if (googleLoginButton) {
+                  googleLoginButton.click();
+                }
               }}
-              useOneTap
-              theme="filled_blue"
-              text="signin_with"
-              shape="rectangular"
-              locale="vi"
-              width="100%"
-              size="large"
-            />
+              className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+            >
+              <img src={GoogleIcon} alt="Google" className="w-6 h-6" />
+              <span className="font-medium">Đăng nhập bằng Google</span>
+            </button>
+            <div className="hidden">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  toast.error("Đăng nhập Google thất bại");
+                }}
+                useOneTap
+                theme="filled_blue"
+                text="signin_with"
+                shape="rectangular"
+                locale="vi"
+                width="100%"
+                size="large"
+              />
+            </div>
           </div>
 
           <p className="mt-4 text-center">
