@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { remoteUrl } from "../../types/constant";
+import { remoteUrl, PhonePattern } from "../../types/constant";
 import UserIcon from "../../assets/user_icon.png";
 import {
   X,
@@ -61,12 +61,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [tempSensitiveValue, setTempSensitiveValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
- // const [errorPassword, setErrorPassword] = useState<string | null>(null);
+  // const [errorPassword, setErrorPassword] = useState<string | null>(null);
   const [errorOTP, setErrorOTP] = useState<string | null>(null);
   const [isAlertVisible, setIsAlertVisible] = useState(false);
   const [isAlertLoginVisible, setIsAlertLoginVisible] = useState(false);
   const [showPasswordFields, setShowPasswordFields] = useState(false);
- // const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [image, setImage] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { post } = useFetch();
@@ -88,6 +88,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     const newErrors: any = {};
     if (!form.displayName)
       newErrors.displayName = "Tên hiển thị không được bỏ trống";
+
+    if (form.phone && !PhonePattern.test(form.phone)) {
+      newErrors.phone = "Số điện thoại không hợp lệ";
+    }
 
     if (showPasswordFields) {
       if (!form.currentPassword) {
@@ -213,7 +217,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       delete dataToSend.confirmPassword;
 
       console.log("Data to send", dataToSend);
-      const response = await fetch(`${remoteUrl}/v1/user/update-profile`, {
+      const response = await fetch(`${remoteUrl}/v1/user/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -438,10 +442,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
           />
 
           {/* Sensitive fields */}
-          <div
-            className="cursor-pointer"
-            onClick={() => handleSensitiveFieldClick("email")}
-          >
+          <div>
             <InputField
               title="Email"
               isRequire={true}
@@ -449,7 +450,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={form.email}
               icon={MailIcon}
               readOnly
-              rightIcon={<LockIcon className="w-4 h-4 text-gray-400" />}
             />
           </div>
 
@@ -465,13 +465,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               icon={PhoneIcon}
               readOnly
               rightIcon={<LockIcon className="w-4 h-4 text-gray-400" />}
+              error={errors.phone}
             />
           </div>
 
-          <div
-            className="cursor-pointer"
-            onClick={() => handleSensitiveFieldClick("studentId")}
-          >
+          <div>
             <InputField
               title="MSSV"
               isRequire={true}
@@ -479,7 +477,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={form.studentId}
               icon={IdCardIcon}
               readOnly
-              rightIcon={<LockIcon className="w-4 h-4 text-gray-400" />}
             />
           </div>
 
