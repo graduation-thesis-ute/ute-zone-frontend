@@ -205,6 +205,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
     fetchPagePosts(0);
   };
 
+  const handlePostDeleted = () => {
+    setCurrentPage(0);
+    fetchPagePosts(0);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
@@ -459,7 +464,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
                       key={post._id} 
                       ref={index === posts.length - 1 ? lastPostElementRef : undefined}
                     >
-                      <PagePostCard post={post} />
+                      <PagePostCard 
+                        post={post} 
+                        onPostUpdated={handlePostCreated}
+                        onPostDeleted={handlePostDeleted}
+                      />
                     </div>
                   ))}
                   {isLoadingMore && (

@@ -94,6 +94,11 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
     };
   }, [currentPage, totalPages, isLoadingMore, fetchPagePosts]);
 
+  const handlePostUpdated = () => {
+    setCurrentPage(0);
+    fetchPagePosts(0);
+  };
+
   if (!isOpen) return null;
 
   if (isLoading) {
@@ -208,7 +213,10 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
                       key={post._id}
                       ref={index === posts.length - 1 ? lastPostElementRef : undefined}
                     >
-                      <PagePostCard post={post} />
+                      <PagePostCard 
+                        post={post} 
+                        onPostUpdated={handlePostUpdated}
+                      />
                     </div>
                   ))}
                   {isLoadingMore && (
