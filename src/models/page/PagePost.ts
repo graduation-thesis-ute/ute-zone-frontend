@@ -7,6 +7,7 @@ export interface PagePost {
   totalComments: number;
   totalShares: number;
   isLiked?: boolean;
+  isOwner: number;
   page: {
     _id: string;
     name: string;

@@ -11,7 +11,6 @@ import {
   Image as ImageIcon, 
   ThumbsUp, 
   MessageCircle, 
-  Share2, 
   MoreHorizontal,
   Heart,
   Laugh,
@@ -65,12 +64,9 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
- // const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [liked, setLiked] = useState(false);
- // const [isCheckingLike, setIsCheckingLike] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { get, post: postComment } = useFetch();
-  //const [totalPages, setTotalPages] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<number | null>(null);
@@ -101,13 +97,11 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     if (isOpen) {
       setComments([]);
       setCurrentPage(0);
-      //setTotalPages(0);
       fetchComments();
       checkIfLiked();
     }
   }, [isOpen]);
 
-  // Handle clicks outside of reaction menu to close it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -128,7 +122,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   }, [showReactions]);
 
   const handleShowReactions = () => {
-    // Clear any pending timeout that would hide reactions
     if (reactionTimeoutRef.current) {
       clearTimeout(reactionTimeoutRef.current);
       reactionTimeoutRef.current = null;
@@ -137,17 +130,14 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   };
 
   const handleHideReactions = () => {
-    // Set a timeout to hide reactions after a delay
-    // This gives the user time to move their mouse to the reaction menu
     reactionTimeoutRef.current = setTimeout(() => {
       if (!hoveredReaction) {
         setShowReactions(false);
       }
-    }, 300); // Delay in milliseconds
+    }, 300);
   };
 
   const handleReactionMenuEnter = () => {
-    // Clear any pending timeout that would hide reactions
     if (reactionTimeoutRef.current) {
       clearTimeout(reactionTimeoutRef.current);
       reactionTimeoutRef.current = null;
@@ -155,8 +145,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   };
 
   const handleReactionMenuLeave = () => {
-    // Hide reactions after a short delay when leaving the menu
-    // This avoids the menu disappearing immediately if user accidentally moves out
     reactionTimeoutRef.current = setTimeout(() => {
       setShowReactions(false);
       setHoveredReaction(null);
@@ -181,7 +169,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         setComments(prev => [...prev, ...newComments]);
       }
       setHasMore(currentPage < response.data.totalPages - 1);
-      //setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error('Error fetching comments:', error);
     } finally {
@@ -191,7 +178,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const checkIfLiked = async () => {
     try {
-      //setIsCheckingLike(true);
       const response = await get(`/v1/page-post-reaction/list`, {
         pagePost: post._id,
         isPaged: '0'
@@ -200,16 +186,14 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       const reactions = response.data.content;
       const userReaction = reactions.find((reaction: any) => reaction.user._id === profile?._id);
       if (userReaction) {
-        setLiked(true);
+        setIsLiked(true);
         setCurrentReaction(userReaction.reactionType);
       } else {
-        setLiked(false);
+        setIsLiked(false);
         setCurrentReaction(null);
       }
     } catch (error) {
       console.error('Error checking like status:', error);
-    } finally {
-      //setIsCheckingLike(false);
     }
   };
 
@@ -270,29 +254,23 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     }
   };
 
-  const handleToggleLike = async (reactionType?: number) => {
+  const handleToggleLike = async () => {
     try {
-      // Nếu đã reaction và click vào reaction hiện tại -> xóa reaction
-      if (liked && currentReaction === reactionType) {
+      if (isLiked) {
         const response = await postComment(`/v1/page-post-reaction/delete/${post._id}`);
         if (response.result) {
-          setLiked(false);
-          setCurrentReaction(null);
+          setIsLiked(false);
           if (onPostUpdated) {
             onPostUpdated();
           }
         }
-        return; // Thêm return để ngăn không thực hiện thêm reaction
-      } 
-      // Nếu chưa reaction hoặc chọn reaction khác -> thêm reaction mới
-      else {
+      } else {
         const response = await postComment(`/v1/page-post-reaction/create`, {
           pagePost: post._id,
-          reactionType: reactionType || 1
+          reactionType: 1
         });
         if (response.result) {
-          setLiked(true);
-          setCurrentReaction(reactionType || 1);
+          setIsLiked(true);
           if (onPostUpdated) {
             onPostUpdated();
           }
@@ -318,12 +296,10 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const handleClose = () => {
     setComments([]);
     setCurrentPage(0);
-    //setTotalPages(0);
     setSelectedImageIndex(null);
     onClose();
   };
 
-  // Render image gallery with improved layout
   const renderImageGallery = () => {
     if (!post.imageUrls || post.imageUrls.length === 0) return null;
 
@@ -332,7 +308,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     };
 
     if (post.imageUrls.length === 1) {
-      // Single image
       return (
         <div className="mb-3 overflow-hidden">
           <img
@@ -347,7 +322,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     }
 
     if (post.imageUrls.length === 2) {
-      // Two images side by side
       return (
         <div className="grid grid-cols-2 gap-1 mb-3">
           {post.imageUrls.map((url, index) => (
@@ -365,7 +339,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     }
 
     if (post.imageUrls.length === 3) {
-      // One large image on left, two stacked on right
       return (
         <div className="grid grid-cols-2 gap-1 mb-3">
           <div className="row-span-2 overflow-hidden">
@@ -392,7 +365,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       );
     }
 
-    // Four or more images
     return (
       <div className="grid grid-cols-2 gap-1 mb-3">
         {post.imageUrls.slice(0, 4).map((url, index) => (
@@ -417,7 +389,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     );
   };
 
-  // Image viewer for selected images
   const renderImageViewer = () => {
     if (selectedImageIndex === null || !post.imageUrls) return null;
 
@@ -630,7 +601,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     <>
       <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-          {/* Header */}
           <div className="p-4 border-b flex items-center justify-center relative">
             <h2 className="text-xl font-semibold text-center w-full">Bài viết</h2>
             <button
@@ -641,7 +611,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             </button>
           </div>
 
-          {/* Post Content */}
           <div className="p-4 border-b">
             <div className="flex items-center space-x-3 mb-3">
               <img
@@ -664,10 +633,8 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             
             <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">{post.content}</p>
             
-            {/* Improved image gallery */}
             {renderImageGallery()}
             
-            {/* Like counter */}
             <div className="flex items-center justify-between text-xs text-gray-500 py-2 border-t border-b">
               <div className="flex items-center space-x-1">
                 {post.totalReactions > 0 && (
@@ -683,97 +650,29 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
               </div>
               <div className="flex space-x-3">
                 <span>{post.totalComments || 0} bình luận</span>
-                <span>{post.totalShares || 0} lượt chia sẻ</span>
               </div>
             </div>
             
-            {/* Action buttons */}
             <div className="flex justify-between py-1">
-              {/* Like button with reaction menu */}
-              <div 
-                ref={reactionButtonRef}
-                className="relative flex-1"
+              <button 
+                onClick={handleToggleLike}
+                className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
+                  isLiked ? 'text-blue-500' : 'text-gray-500'
+                }`}
               >
-                <button 
-                  className={`flex items-center justify-center space-x-2 py-2 w-full rounded-md hover:bg-gray-100 ${
-                    liked ? (currentReaction ? reactionTypes.find(r => r.type === currentReaction)?.color : 'text-blue-500') : 'text-gray-500'
-                  }`}
-                  onMouseEnter={handleShowReactions}
-                  onMouseLeave={handleHideReactions}
-                  onClick={() => {
-                    if (showReactions) {
-                      setShowReactions(false);
-                    } else {
-                      handleToggleLike(1); // Default to "like" when clicking the button directly
-                    }
-                  }}
-                >
-                  {currentReaction ? (
-                    React.createElement(reactionTypes.find(r => r.type === currentReaction)?.icon || ThumbsUp, { size: 18 })
-                  ) : (
-                    <ThumbsUp size={18} />
-                  )}
-                  <span className="text-sm font-medium">
-                    {currentReaction ? 
-                      reactionTypes.find(r => r.type === currentReaction)?.label || 'Thích' : 
-                      'Thích'
-                    }
-                  </span>
-                </button>
-                
-                {/* Reaction menu that shows on hover */}
-                {showReactions && (
-                  <div 
-                    ref={reactionMenuRef}
-                    className="absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg p-2 flex space-x-1 z-10"
-                    onMouseEnter={handleReactionMenuEnter}
-                    onMouseLeave={handleReactionMenuLeave}
-                    style={{ transform: 'translateY(-8px)' }}
-                  >
-                    {reactionTypes.map((reaction) => (
-                      <div 
-                        key={reaction.type}
-                        className="relative group"
-                        onMouseEnter={() => setHoveredReaction(reaction.type)}
-                        onMouseLeave={() => setHoveredReaction(null)}
-                      >
-                        <button
-                          className={`p-2 rounded-full hover:bg-gray-100 transform transition-all duration-150 ${
-                            hoveredReaction === reaction.type ? 'scale-125' : ''
-                          } ${reaction.color}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleLike(reaction.type);
-                          }}
-                        >
-                          {React.createElement(reaction.icon, { size: 24 })}
-                        </button>
-                        
-                        {/* Label tooltip */}
-                        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black bg-opacity-80 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>
-                          {reaction.label}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
+                <span className="text-sm font-medium">
+                  {isLiked ? 'Đã thích' : 'Thích'}
+                </span>
+              </button>
               
-              {/* Comment button */}
               <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
                 <MessageCircle size={18} />
                 <span className="text-sm font-medium">Bình luận</span>
               </button>
-              
-              {/* Share button */}
-              <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
-                <Share2 size={18} />
-                <span className="text-sm font-medium">Chia sẻ</span>
-              </button>
             </div>
           </div>
 
-          {/* Comments Section */}
           <div 
             className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"
             onScroll={handleScroll}
@@ -820,8 +719,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                     )}
                   </div>
 
-                  {/* Replies Section */}
-                  {comment.totalChildren && comment.totalChildren > 0 && (
+                  {(comment.totalChildren ?? 0) > 0 && (
                     <div className="mt-2 ml-4">
                       <button
                         className="text-xs text-blue-500 hover:underline"
@@ -881,7 +779,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                     </div>
                   )}
 
-                  {/* Reply Input */}
                   {replyingTo?._id === comment._id && (
                     <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
                       <div className="flex items-center space-x-2">
@@ -953,7 +850,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             <div ref={commentsEndRef} />
           </div>
 
-          {/* Comment Input */}
           <form onSubmit={handleSubmitComment} className="p-3 border-t bg-white">
             <div className="flex items-center space-x-2">
               <img
@@ -1015,7 +911,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         </div>
       </div>
 
-      {/* Full-screen image viewer */}
       {renderImageViewer()}
     </>
   );

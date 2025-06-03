@@ -42,6 +42,7 @@ const CommunityPageFeed: React.FC = () => {
       const pagesResponse = await get('/v1/page/list', {
         kind: '1',
         isPaged: '0',
+        status: 1 // Only fetch pages with status 1 (active)
       });
 
       if (!pagesResponse.data || !pagesResponse.data.content) {
@@ -53,19 +54,22 @@ const CommunityPageFeed: React.FC = () => {
       }
 
       // Get posts from each community page
-      const postsPromises = pagesResponse.data.content.map(async (page: any) => {
-        const postsResponse = await get('/v1/page-post/list', {
-          pageId: page._id,
-          isPaged: '1',
-          page: '0',
-          size: '10'
-        });
+      const postsPromises = pagesResponse.data.content
+        .filter((page: any) => page.status === 1) // Additional client-side filter for status 1
+        .map(async (page: any) => {
+          const postsResponse = await get('/v1/page-post/list', {
+            pageId: page._id,
+            isPaged: '1',
+            page: '0',
+            size: '10',
+            status: '2'  // Only show approved posts
+          });
 
-        if (postsResponse.data && postsResponse.data.content) {
-          return postsResponse.data.content;
-        }
-        return [];
-      });
+          if (postsResponse.data && postsResponse.data.content) {
+            return postsResponse.data.content;
+          }
+          return [];
+        });
 
       const allPosts = await Promise.all(postsPromises);
       const flattenedPosts = allPosts.flat().sort((a, b) => 
