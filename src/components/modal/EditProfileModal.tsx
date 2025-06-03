@@ -217,7 +217,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
       delete dataToSend.confirmPassword;
 
       console.log("Data to send", dataToSend);
-      const response = await fetch(`${remoteUrl}/v1/user/update-profile`, {
+      const response = await fetch(`${remoteUrl}/v1/user/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
