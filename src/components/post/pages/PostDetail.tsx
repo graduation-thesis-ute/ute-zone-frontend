@@ -28,7 +28,7 @@ const PostDetail= ({
   const [totalComments, setTotalComments] = useState(postItem?.totalComments || 0);
   //const [totalReactions, setTotalReactions] = useState(postItem?.totalReactions || 0);
   useEffect(() => {
-   
+   console.log('profile', profile);
     const loadPostDetails = async () => {
       try {
         setIsLoading(true);
