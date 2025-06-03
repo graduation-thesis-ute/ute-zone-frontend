@@ -125,7 +125,7 @@ const CreatePagePost: React.FC<CreatePagePostProps> = ({ pageId, onClose, onPost
         if (postStatus === 3) {
           // Lấy thông tin chi tiết về lý do từ chối
           const flaggedCategories = response.data.flaggedCategories || [];
-          const moderationDetails = response.data.moderationDetails || {};
+         // const moderationDetails = response.data.moderationDetails || {};
           
           let rejectionReason = "Bài đăng của bạn đã bị từ chối do vi phạm nội dung.";
           if (flaggedCategories.length > 0) {

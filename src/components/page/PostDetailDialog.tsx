@@ -65,12 +65,12 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+ // const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [isCheckingLike, setIsCheckingLike] = useState(false);
+ // const [isCheckingLike, setIsCheckingLike] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { get, post: postComment } = useFetch();
-  const [totalPages, setTotalPages] = useState(0);
+  //const [totalPages, setTotalPages] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<number | null>(null);
@@ -101,7 +101,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     if (isOpen) {
       setComments([]);
       setCurrentPage(0);
-      setTotalPages(0);
+      //setTotalPages(0);
       fetchComments();
       checkIfLiked();
     }
@@ -181,7 +181,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         setComments(prev => [...prev, ...newComments]);
       }
       setHasMore(currentPage < response.data.totalPages - 1);
-      setTotalPages(response.data.totalPages);
+      //setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error('Error fetching comments:', error);
     } finally {
@@ -191,7 +191,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const checkIfLiked = async () => {
     try {
-      setIsCheckingLike(true);
+      //setIsCheckingLike(true);
       const response = await get(`/v1/page-post-reaction/list`, {
         pagePost: post._id,
         isPaged: '0'
@@ -209,7 +209,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     } catch (error) {
       console.error('Error checking like status:', error);
     } finally {
-      setIsCheckingLike(false);
+      //setIsCheckingLike(false);
     }
   };
 
@@ -318,7 +318,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const handleClose = () => {
     setComments([]);
     setCurrentPage(0);
-    setTotalPages(0);
+    //setTotalPages(0);
     setSelectedImageIndex(null);
     onClose();
   };

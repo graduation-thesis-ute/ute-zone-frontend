@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import MyGroupDetail from '../components/group/MyGroupDetail';
-import FollowedGroupDetail from '../components/group/FollowedGroupDetail';
+//import FollowedGroupDetail from '../components/group/FollowedGroupDetail';
 import CommunityGroupFeed from '../components/group/CommunityGroupFeed';
 import useFetch from '../hooks/useFetch';
 import SuggestedGroups from '../components/group/SuggestedGroups';
-import { useNavigate } from 'react-router-dom';
+//import { useNavigate } from 'react-router-dom';
 import GroupManagement from '../components/group/GroupManagement';
 import JoinedGroups from '../components/group/JoinedGroups';
 interface GroupProps {
@@ -15,7 +15,7 @@ interface GroupProps {
 const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
     const [groupData, setGroupData] = useState(null);
     const { get } = useFetch();
-    const navigate = useNavigate();
+    //const navigate = useNavigate();
 
     useEffect(() => {
         const fetchGroupData = async () => {

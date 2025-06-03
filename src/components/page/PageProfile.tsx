@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Bookmark, Settings, Share2, Bell, Loader2, Plus } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+//import { useParams } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
 import { Page } from '../../models/page/Page';
 import { PagePost, PagePostResponse } from '../../models/page/PagePost';
@@ -25,7 +25,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [isLoading, setIsLoading] = useState(!pageData);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isFollowing, setIsFollowing] = useState(false);
+  //const [isFollowing, setIsFollowing] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [showCreatePost, setShowCreatePost] = useState(false);

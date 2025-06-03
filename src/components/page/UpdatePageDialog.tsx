@@ -29,14 +29,14 @@ const UpdatePageDialog: React.FC<UpdatePageDialogProps> = ({
   const { put, post } = useFetch();
   //const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(page.avatarUrl);
-  const [coverPreview, setCoverPreview] = useState<string | null>(page.coverUrl);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(page.avatarUrl ?? null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(page.coverUrl ?? null);
   const [formData, setFormData] = useState<UpdatePageForm>({
     name: page.name,
     description: page.description,
     category: page.category,
-    avatarUrl: page.avatarUrl,
-    coverUrl: page.coverUrl,
+    avatarUrl: page.avatarUrl ?? null,
+    coverUrl: page.coverUrl ?? null,
   });
   const { isLoading, showLoading, hideLoading } = useLoading();
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -47,11 +47,11 @@ const UpdatePageDialog: React.FC<UpdatePageDialogProps> = ({
       name: page.name,
       description: page.description,
       category: page.category,
-      avatarUrl: page.avatarUrl,
-      coverUrl: page.coverUrl,
+      avatarUrl: page.avatarUrl ?? null,
+      coverUrl: page.coverUrl ?? null,
     });
-    setAvatarPreview(page.avatarUrl);
-    setCoverPreview(page.coverUrl);
+    setAvatarPreview(page.avatarUrl ?? null);
+    setCoverPreview(page.coverUrl ?? null);
   }, [page]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

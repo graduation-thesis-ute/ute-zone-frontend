@@ -10,7 +10,10 @@ import { useEffect, useState } from "react";
 import useFetch from "./hooks/useFetch";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
-import PagePostDetail from './components/page/PagePostDetail';
+import PagePostDetail from "./components/page/PagePostDetail";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -43,7 +46,7 @@ const App = () => {
   }, []);
 
   return (
-    <>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       {loading ? (
         <Loading />
       ) : (
@@ -56,10 +59,11 @@ const App = () => {
                   {/* <Route path="/friends" element={<Friend />} /> */}
                   {/* <Route path="/postPage" element={<PostPage />} /> */}\
                   {/* <Route path="/chatbot" element={<Chatbot />} /> */}
-
                   {/* <Route path="/postPage" element={<PostPage />} /> */}
-                  <Route path="/pages/:pageId/posts/:postId" element={<PagePostDetail />} />
-
+                  <Route
+                    path="/pages/:pageId/posts/:postId"
+                    element={<PagePostDetail />}
+                  />
                 </>
               ) : (
                 <>
@@ -87,7 +91,7 @@ const App = () => {
           />
         </>
       )}
-    </>
+    </GoogleOAuthProvider>
   );
 };
 

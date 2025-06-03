@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Trash2 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
-import { uploadImage } from '../../types/utils';
+//import { uploadImage } from '../../types/utils';
 import { remoteUrl } from '../../types/constant';
 import { useLoading } from '../../hooks/useLoading';
 import { LoadingDialog } from '../Dialog';
@@ -41,9 +41,9 @@ const CreatePageDialog: React.FC<CreatePageDialogProps> = ({
     cover: null,
   });
   const [error, setError] = useState<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  //const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  //const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const { post } = useFetch();
   const { isLoading, showLoading, hideLoading } = useLoading();
@@ -65,11 +65,11 @@ const CreatePageDialog: React.FC<CreatePageDialogProps> = ({
       reader.onloadend = () => {
         const result = reader.result as string;
         if (type === 'avatar') {
-          setAvatarPreview(result);
+          //setAvatarPreview(result);
           setAvatarFile(file);
           setPreviewUrls(prev => ({ ...prev, avatar: result }));
         } else {
-          setCoverPreview(result);
+          //setCoverPreview(result);
           setCoverFile(file);
           setPreviewUrls(prev => ({ ...prev, cover: result }));
         }
@@ -83,11 +83,11 @@ const CreatePageDialog: React.FC<CreatePageDialogProps> = ({
 
   const handleRemoveImage = (type: 'avatar' | 'cover') => {
     if (type === 'avatar') {
-      setAvatarPreview(null);
+      //setAvatarPreview(null);
       setAvatarFile(null);
       setPreviewUrls(prev => ({ ...prev, avatar: null }));
     } else {
-      setCoverPreview(null);
+      //setCoverPreview(null);
       setCoverFile(null);
       setPreviewUrls(prev => ({ ...prev, cover: null }));
     }

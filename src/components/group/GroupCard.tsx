@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Globe, Settings, MessageSquare } from 'lucide-react';
+import { Users, Settings, MessageSquare } from 'lucide-react';
 
 interface GroupCardProps {
     id: string;

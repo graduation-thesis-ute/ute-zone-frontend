@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, Bookmark, Share2, Bell, Loader2, X } from 'lucide-react';
+import { Users, Bookmark, Loader2, X } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { Page } from '../../models/page/Page';
 import { PagePost, PagePostResponse } from '../../models/page/PagePost';
 import PagePostCard from './PagePostCard';
 import PagePhotos from './PagePhotos';
 import PageMembers from './PageMembers';
-import { toast } from 'react-toastify';
+//import { toast } from 'react-toastify';
 
 interface PageProfileDialogProps {
   isOpen: boolean;
