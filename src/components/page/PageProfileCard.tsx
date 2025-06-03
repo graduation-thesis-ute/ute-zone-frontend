@@ -1,16 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Users, Bookmark, Settings } from 'lucide-react';
 import { Page } from '../../models/page/Page';
+import PageSettingsDropdown from './PageSettingsDropdown';
 
 interface PageProfileCardProps {
   page: Page;
   onPageClick: (pageId: string) => void;
   onSettingsClick: (e: React.MouseEvent, pageId: string) => void;
+  onUpdate: (pageId: string) => void;
+  onDelete: (pageId: string) => void;
 }
 
-const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, onSettingsClick }) => {
+const PageProfileCard: React.FC<PageProfileCardProps> = ({ 
+  page, 
+  onPageClick, 
+  onSettingsClick,
+  onUpdate,
+  onDelete 
+}) => {
   const [coverError, setCoverError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSettingsOpen(!isSettingsOpen);
+  };
+
+  const handleUpdate = () => {
+    onUpdate(page._id);
+    setIsSettingsOpen(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(page._id);
+    setIsSettingsOpen(false);
+  };
 
   return (
     <div 
@@ -60,12 +97,20 @@ const PageProfileCard: React.FC<PageProfileCardProps> = ({ page, onPageClick, on
             <p className="text-gray-600 text-sm mt-1 line-clamp-2">{page.description}</p>
             <p className="text-xs text-gray-500 mt-1">{page.category}</p>
           </div>
-          <button 
-            className="text-gray-500 hover:text-gray-700"
-            onClick={(e) => onSettingsClick(e, page._id)}
-          >
-            <Settings size={20} />
-          </button>
+          <div ref={settingsRef} className="relative">
+            <button 
+              className="text-gray-500 hover:text-gray-700"
+              onClick={handleSettingsClick}
+            >
+              <Settings size={20} />
+            </button>
+            <PageSettingsDropdown
+              isOpen={isSettingsOpen}
+              onClose={() => setIsSettingsOpen(false)}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+            />
+          </div>
         </div>
 
         {/* Stats */}

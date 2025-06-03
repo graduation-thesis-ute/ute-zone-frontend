@@ -50,7 +50,8 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
         pageId: pageId,
         isPaged: '1',
         page: pageNum.toString(),
-        size: '10'
+        size: '10',
+        status: '2'
       });
       const data: PagePostResponse = response.data;
       if (pageNum === 0) {
