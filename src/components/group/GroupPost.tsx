@@ -18,6 +18,7 @@ interface GroupPostProps {
             _id: string;
             name: string;
             avatarUrl?: string;
+            status?: number;
         };
         totalReactions: number;
         totalComments: number;
