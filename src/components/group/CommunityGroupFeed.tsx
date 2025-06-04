@@ -244,7 +244,7 @@ const CommunityGroupFeed: React.FC = () => {
                 {/* Post Actions */}
                 <div className="flex flex-col mt-4 pt-4 border-t" onClick={(e) => e.stopPropagation()}>
                   {/* Like and Comment counts */}
-                  <div className="flex items-center justify-center space-x-4 text-gray-500 text-sm mb-2">
+                  <div className="flex items-center justify-between text-gray-500 text-sm mb-2">
                     {post.totalReactions > 0 && (
                       <div className="flex items-center space-x-1">
                         <div className="bg-blue-500 rounded-full p-1">
@@ -254,7 +254,7 @@ const CommunityGroupFeed: React.FC = () => {
                       </div>
                     )}
                     {post.totalComments > 0 && (
-                      <span>{post.totalComments} bình luận</span>
+                      <span className="ml-auto">{post.totalComments} bình luận</span>
                     )}
                   </div>
 
