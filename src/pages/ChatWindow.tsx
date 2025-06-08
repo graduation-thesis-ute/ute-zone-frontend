@@ -923,7 +923,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsEditDialogOpen(false);
       onMessageChange();
       onConversationUpdateInfo(conversation);
-      toast.success("Conversation updated successfully!");
+      toast.success("Cập nhật thành công!");
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -1093,7 +1093,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           updateConversationPermission(conversation._id, permissions)
         }
         onClose={() => setIsManageMembersModalOpen(false)}
-        onDisbandGroup={() => setIsConfirmDialogOpen(true)}
+        onDisbandGroup={() => handleDisbandGroup()}
       />
 
       <MemberListModal
@@ -1135,9 +1135,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onCancel={() => setIsConfirmDelMemDialogOpen(false)}
       />
 
-      <ConfimationDialog
+      {/* <ConfimationDialog
         isVisible={isConfirmDialogOpen}
-        title="Confirm"
+        title="Xác nhận"
         color="red"
         message="Are you sure you want to disband the group?"
         onConfirm={() => {
@@ -1145,13 +1145,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           setIsConfirmDialogOpen(false);
         }}
         onCancel={() => setIsConfirmDialogOpen(false)}
-      />
+      /> */}
 
       <ConfimationDialog
         isVisible={isConfirmLeaveDialogOpen}
-        title="Confirm"
+        title="Xác nhận"
         color="red"
-        message="Are you sure you want to leave the group?"
+        message="Bạn muốn rời khỏi nhóm này?"
         onConfirm={() => {
           handleLeaveGroup(memberIdSelected);
           setIsConfirmLeaveDialogOpen(false);
