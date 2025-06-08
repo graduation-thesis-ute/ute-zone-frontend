@@ -1,17 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, MoreHorizontal, ThumbsUp, Edit2, Trash2, X, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { PagePost } from '../../models/page/PagePost';
-import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import PostDetailDialog from './PostDetailDialog';
-import useFetch from '../../hooks/useFetch';
-import { uploadImage2 } from '../../types/utils';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  MessageCircle,
+  MoreHorizontal,
+  ThumbsUp,
+  Edit2,
+  Trash2,
+  X,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
+import { PagePost } from "../../models/page/PagePost";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import PostDetailDialog from "./PostDetailDialog";
+import useFetch from "../../hooks/useFetch";
+import { toast } from "react-toastify";
 
 // Utility function to convert base64 to Blob
 const base64ToBlob = (base64: string): Blob => {
-  const byteString = atob(base64.split(',')[1]);
-  const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+  const byteString = atob(base64.split(",")[1]);
+  const mimeString = base64.split(",")[0].split(":")[1].split(";")[0];
   const ab = new ArrayBuffer(byteString.length);
   const ia = new Uint8Array(ab);
   for (let i = 0; i < byteString.length; i++) {
@@ -33,12 +41,17 @@ interface UpdatePostDialogProps {
   onUpdate: () => void;
 }
 
-const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, post, onUpdate }) => {
+const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({
+  isOpen,
+  onClose,
+  post,
+  onUpdate,
+}) => {
   const [content, setContent] = useState(post.content);
   const [imageUrls, setImageUrls] = useState<string[]>(post.imageUrls || []);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { post: postRequest ,put} = useFetch();
+  const { post: postRequest, put } = useFetch();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,7 +64,7 @@ const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, po
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error reading file:', error);
+      console.error("Error reading file:", error);
     }
   };
 
@@ -73,41 +86,41 @@ const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, po
             newImageUrl = uploadResponse.data.filePath;
           }
         } catch (error) {
-          console.error('Error uploading image:', error);
-          toast.error('Có lỗi xảy ra khi tải lên hình ảnh');
+          console.error("Error uploading image:", error);
+          toast.error("Có lỗi xảy ra khi tải lên hình ảnh");
           setIsSubmitting(false);
           return;
         }
       }
 
-      console.log('Updating post with data:', {
+      console.log("Updating post with data:", {
         id: post._id,
         content: content.trim(),
-        imageUrls: newImageUrl ? [...imageUrls, newImageUrl] : imageUrls
+        imageUrls: newImageUrl ? [...imageUrls, newImageUrl] : imageUrls,
       });
 
-      const response = await put('/v1/page-post/update', {
+      const response = await put("/v1/page-post/update", {
         id: post._id,
         content: content.trim(),
-        imageUrls: newImageUrl ? [...imageUrls, newImageUrl] : imageUrls
+        imageUrls: newImageUrl ? [...imageUrls, newImageUrl] : imageUrls,
       });
 
-      console.log('Update response:', response);
+      console.log("Update response:", response);
 
       if (response.result) {
-        console.log('Update successful, calling onUpdate');
-        toast.success('Cập nhật bài viết thành công');
+        console.log("Update successful, calling onUpdate");
+        toast.success("Cập nhật bài viết thành công");
         if (onUpdate) {
           onUpdate();
         }
         onClose();
       } else {
-        console.error('Update failed:', response.message);
-        toast.error(response.message || 'Cập nhật bài viết thất bại');
+        console.error("Update failed:", response.message);
+        toast.error(response.message || "Cập nhật bài viết thất bại");
       }
     } catch (error) {
-      console.error('Error updating post:', error);
-      toast.error('Có lỗi xảy ra khi cập nhật bài viết');
+      console.error("Error updating post:", error);
+      toast.error("Có lỗi xảy ra khi cập nhật bài viết");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,7 +162,9 @@ const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, po
                   />
                   <button
                     type="button"
-                    onClick={() => setImageUrls(prev => prev.filter((_, i) => i !== index))}
+                    onClick={() =>
+                      setImageUrls((prev) => prev.filter((_, i) => i !== index))
+                    }
                     className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X size={16} />
@@ -190,7 +205,10 @@ const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, po
 
             <button
               type="submit"
-              disabled={isSubmitting || (!content.trim() && !imagePreview && imageUrls.length === 0)}
+              disabled={
+                isSubmitting ||
+                (!content.trim() && !imagePreview && imageUrls.length === 0)
+              }
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSubmitting ? (
@@ -209,66 +227,88 @@ const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({ isOpen, onClose, po
   );
 };
 
-const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPostDeleted }) => {
+const PagePostCard: React.FC<PagePostCardProps> = ({
+  post,
+  onPostUpdated,
+  onPostDeleted,
+}) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [totalReactions, setTotalReactions] = useState(post.totalReactions || 0);
+  const [totalReactions, setTotalReactions] = useState(
+    post.totalReactions || 0
+  );
   const [showDropdown, setShowDropdown] = useState(false);
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
-  const { post: postRequest, del: deleteRequest, get: getRequest, put } = useFetch();
+  const {
+    post: postRequest,
+    del: deleteRequest,
+    get: getRequest,
+    put,
+  } = useFetch();
 
   // Kiểm tra xem user đã thích post chưa
   const checkExistingReaction = async () => {
     try {
       // Gọi API với pagePostId và userId (current user)
-      const response = await getRequest(`/v1/page-post-reaction/list?pagePostId=${post._id}&userId=${localStorage.getItem('userId')}`);
-      console.log('Check reaction response:', response); // Debug log
-      
+      const response = await getRequest(
+        `/v1/page-post-reaction/list?pagePostId=${
+          post._id
+        }&userId=${localStorage.getItem("userId")}`
+      );
+      console.log("Check reaction response:", response); // Debug log
+
       if (response.result && response.data && response.data.content) {
         // Nếu có reaction trong danh sách thì user đã thích
-        const hasReaction = response.data.content.some((reaction: any) => 
-          reaction.pagePost === post._id && reaction.user === localStorage.getItem('userId')
+        const hasReaction = response.data.content.some(
+          (reaction: any) =>
+            reaction.pagePost === post._id &&
+            reaction.user === localStorage.getItem("userId")
         );
-        console.log('Has reaction:', hasReaction); // Debug log
+        console.log("Has reaction:", hasReaction); // Debug log
         setIsLiked(hasReaction);
       } else {
         setIsLiked(false);
       }
     } catch (error) {
-      console.error('Error checking existing reaction:', error);
+      console.error("Error checking existing reaction:", error);
       setIsLiked(false);
     }
   };
 
   // Kiểm tra reaction khi component mount và khi post thay đổi
   useEffect(() => {
-    if (post._id && localStorage.getItem('userId')) {
+    if (post._id && localStorage.getItem("userId")) {
       checkExistingReaction();
     }
   }, [post._id]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   // Kiểm tra xem nội dung có cần nút "Đọc thêm" không
   useEffect(() => {
     if (contentRef.current) {
-      const lineHeight = parseInt(window.getComputedStyle(contentRef.current).lineHeight);
+      const lineHeight = parseInt(
+        window.getComputedStyle(contentRef.current).lineHeight
+      );
       const height = contentRef.current.scrollHeight;
       const maxHeight = lineHeight * 3; // Hiển thị tối đa 3 dòng
       setIsContentExpanded(height <= maxHeight);
@@ -283,10 +323,10 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
     try {
       // Kiểm tra lại trạng thái like hiện tại
       await checkExistingReaction();
-      
+
       // Nếu đã like thì không cho phép like thêm
       if (isLiked) {
-        console.log('Already liked, cannot like again'); // Debug log
+        console.log("Already liked, cannot like again"); // Debug log
         return;
       }
 
@@ -296,15 +336,15 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
       });
 
       if (response.result) {
-        console.log('Like successful'); // Debug log
+        console.log("Like successful"); // Debug log
         setIsLiked(true);
-        setTotalReactions(prev => prev + 1);
+        setTotalReactions((prev) => prev + 1);
         if (onPostUpdated) {
           onPostUpdated();
         }
       }
     } catch (error) {
-      console.error('Error adding like:', error);
+      console.error("Error adding like:", error);
     }
   };
 
@@ -312,26 +352,28 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
     try {
       // Kiểm tra lại trạng thái like hiện tại
       await checkExistingReaction();
-      
+
       // Nếu chưa like thì không cho phép unlike
       if (!isLiked) {
-        console.log('Not liked yet, cannot unlike'); // Debug log
+        console.log("Not liked yet, cannot unlike"); // Debug log
         return;
       }
 
       // Xóa like
-      const response = await deleteRequest(`/v1/page-post-reaction/delete/${post._id}`);
+      const response = await deleteRequest(
+        `/v1/page-post-reaction/delete/${post._id}`
+      );
 
       if (response.result) {
-        console.log('Unlike successful'); // Debug log
+        console.log("Unlike successful"); // Debug log
         setIsLiked(false);
-        setTotalReactions(prev => prev - 1);
+        setTotalReactions((prev) => prev - 1);
         if (onPostUpdated) {
           onPostUpdated();
         }
       }
     } catch (error) {
-      console.error('Error removing like:', error);
+      console.error("Error removing like:", error);
     }
   };
 
@@ -343,20 +385,20 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
   const handleConfirmDelete = async () => {
     try {
       setIsDeleting(true);
-      const response = await put('/v1/page-post/change-state', {
+      const response = await put("/v1/page-post/change-state", {
         id: post._id,
         status: 3,
-        reason: 'User requested deletion'
+        reason: "User requested deletion",
       });
       if (response.result) {
-        toast.success('Xóa bài viết thành công');
+        toast.success("Xóa bài viết thành công");
         if (onPostDeleted) {
           onPostDeleted();
         }
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
-      toast.error('Có lỗi xảy ra khi xóa bài viết');
+      console.error("Error deleting post:", error);
+      toast.error("Có lỗi xảy ra khi xóa bài viết");
     } finally {
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
@@ -371,10 +413,10 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
   const formatTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Vừa xong';
+      if (isNaN(date.getTime())) return "Vừa xong";
       return formatDistanceToNow(date, { addSuffix: true, locale: vi });
     } catch (error) {
-      return 'Vừa xong';
+      return "Vừa xong";
     }
   };
 
@@ -390,7 +432,7 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
             src={post.imageUrls[0]}
             alt="Post image"
             className="w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-            style={{ maxHeight: '500px' }}
+            style={{ maxHeight: "500px" }}
             onClick={handlePostClick}
           />
         </div>
@@ -424,7 +466,7 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
               src={post.imageUrls[0]}
               alt="Post image 1"
               className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-              style={{ height: '320px' }}
+              style={{ height: "320px" }}
               onClick={handlePostClick}
             />
           </div>
@@ -464,7 +506,12 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
     return (
       <div className="grid grid-cols-2 gap-1">
         {post.imageUrls.slice(0, 4).map((url, index) => (
-          <div key={index} className={`overflow-hidden relative ${index === 3 && post.imageUrls!.length > 4 ? 'group' : ''}`}>
+          <div
+            key={index}
+            className={`overflow-hidden relative ${
+              index === 3 && post.imageUrls!.length > 4 ? "group" : ""
+            }`}
+          >
             <img
               src={url}
               alt={`Post image ${index + 1}`}
@@ -472,11 +519,13 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
               onClick={handlePostClick}
             />
             {index === 3 && post.imageUrls!.length > 4 && (
-              <div 
+              <div
                 className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
                 onClick={handlePostClick}
               >
-                <span className="text-white text-2xl font-bold">+{post.imageUrls!.length - 4}</span>
+                <span className="text-white text-2xl font-bold">
+                  +{post.imageUrls!.length - 4}
+                </span>
               </div>
             )}
           </div>
@@ -494,7 +543,7 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <img
-                  src={post.page?.avatarUrl || '/default-avatar.png'}
+                  src={post.page?.avatarUrl || "/default-avatar.png"}
                   alt={post.page?.name}
                   className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
                 />
@@ -512,13 +561,13 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
               </div>
             </div>
             <div className="relative" ref={dropdownRef}>
-              <button 
+              <button
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 onClick={() => setShowDropdown(!showDropdown)}
               >
                 <MoreHorizontal size={20} className="text-gray-600" />
               </button>
-              
+
               {showDropdown && (
                 <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border">
                   {post.isOwner === 1 && (
@@ -548,10 +597,10 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
         {/* Content */}
         <div className="px-4 pb-3">
           <div className="relative">
-            <p 
+            <p
               ref={contentRef}
               className={`text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap ${
-                !isContentExpanded ? 'line-clamp-3' : ''
+                !isContentExpanded ? "line-clamp-3" : ""
               }`}
             >
               {post.content}
@@ -578,7 +627,9 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
                 <div className="bg-blue-500 rounded-full p-1">
                   <ThumbsUp size={12} className="text-white" />
                 </div>
-                <span className="text-sm text-gray-500">{totalReactions} lượt thích</span>
+                <span className="text-sm text-gray-500">
+                  {totalReactions} lượt thích
+                </span>
               </>
             )}
           </div>
@@ -589,16 +640,18 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
 
         {/* Action buttons */}
         <div className="px-2 py-1 flex justify-between">
-          <button 
+          <button
             onClick={isLiked ? handleUnlike : handleLike}
             className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-lg hover:bg-gray-100 transition-colors ${
-              isLiked ? 'text-blue-500 hover:bg-blue-50' : 'text-gray-600'
+              isLiked ? "text-blue-500 hover:bg-blue-50" : "text-gray-600"
             }`}
           >
             <ThumbsUp size={20} className={isLiked ? "fill-current" : ""} />
-            <span className="font-medium text-sm">{isLiked ? 'Đã thích' : 'Thích'}</span>
+            <span className="font-medium text-sm">
+              {isLiked ? "Đã thích" : "Thích"}
+            </span>
           </button>
-          <button 
+          <button
             onClick={handlePostClick}
             className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
           >
@@ -628,7 +681,8 @@ const PagePostCard: React.FC<PagePostCardProps> = ({ post, onPostUpdated, onPost
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h3 className="text-xl font-semibold mb-4">Xác nhận xóa</h3>
             <p className="text-gray-600 mb-6">
-              Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.
+              Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể
+              hoàn tác.
             </p>
             <div className="flex justify-end space-x-3">
               <button
