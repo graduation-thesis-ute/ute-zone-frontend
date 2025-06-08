@@ -7,7 +7,6 @@ import {
   PhoneOff,
   Maximize,
   Minimize,
-  MessageSquare,
   Users,
   Timer,
 } from "lucide-react";

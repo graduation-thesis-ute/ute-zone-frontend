@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
-import useFetch from '../../hooks/useFetch';
+import React, { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { Heart, MessageCircle, MoreHorizontal } from "lucide-react";
+import useFetch from "../../hooks/useFetch";
 
 interface PagePostProps {
   post: {
@@ -22,7 +22,11 @@ interface PagePostProps {
   onPostUpdated?: () => void;
 }
 
-const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) => {
+const PagePost: React.FC<PagePostProps> = ({
+  post,
+  onComment,
+  onPostUpdated,
+}) => {
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [totalReactions, setTotalReactions] = useState(post.totalReactions);
   const { post: postRequest } = useFetch();
@@ -32,13 +36,13 @@ const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) =
       const response = await postRequest(`/v1/page-post/${post._id}/react`);
       if (response.result) {
         setIsLiked(!isLiked);
-        setTotalReactions(prev => isLiked ? prev - 1 : prev + 1);
+        setTotalReactions((prev) => (isLiked ? prev - 1 : prev + 1));
         if (onPostUpdated) {
           onPostUpdated();
         }
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error("Error toggling like:", error);
     }
   };
 
@@ -47,7 +51,7 @@ const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) =
       {/* Post Header */}
       <div className="flex items-center space-x-3 p-4">
         <img
-          src={post.user.avatar || '/default-avatar.png'}
+          src={post.user.avatar || "/default-avatar.png"}
           alt={post.user.name}
           className="w-10 h-10 rounded-full"
         />
@@ -82,7 +86,10 @@ const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) =
       <div className="px-4 py-2 border-t border-b">
         <div className="flex items-center space-x-4 text-sm text-gray-500">
           <div className="flex items-center space-x-1">
-            <Heart size={16} className={isLiked ? "text-red-500" : "text-gray-500"} />
+            <Heart
+              size={16}
+              className={isLiked ? "text-red-500" : "text-gray-500"}
+            />
             <span>{totalReactions} lượt thích</span>
           </div>
           <div className="flex items-center space-x-1">
@@ -97,11 +104,13 @@ const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) =
         <button
           onClick={handleLike}
           className={`flex items-center space-x-2 flex-1 justify-center py-2 rounded-lg ${
-            isLiked ? 'text-red-500 hover:bg-red-50' : 'text-gray-500 hover:bg-gray-100'
+            isLiked
+              ? "text-red-500 hover:bg-red-50"
+              : "text-gray-500 hover:bg-gray-100"
           }`}
         >
           <Heart size={20} className={isLiked ? "fill-current" : ""} />
-          <span>{isLiked ? 'Đã thích' : 'Thích'}</span>
+          <span>{isLiked ? "Đã thích" : "Thích"}</span>
         </button>
         <button
           onClick={() => onComment(post._id)}
@@ -118,4 +127,4 @@ const PagePost: React.FC<PagePostProps> = ({ post, onComment, onPostUpdated }) =
   );
 };
 
-export default PagePost; 
+export default PagePost;

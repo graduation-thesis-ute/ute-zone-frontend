@@ -77,7 +77,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   //const navigate = useNavigate();
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  // const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isConfirmLeaveDialogOpen, setIsConfirmLeaveDialogOpen] =
     useState(false);
   const [isMemberListOpen, setIsMemberListOpen] = useState(false);
