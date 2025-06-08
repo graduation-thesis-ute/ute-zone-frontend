@@ -8,6 +8,7 @@ export interface Page {
   isPublished: boolean;
   isOwner: number;
   totalFollowers: number;
+  status: number; // 1: active, 2: pending, 3: deleted
   createdAt: string;
   updatedAt: string;
   followers?: Array<{

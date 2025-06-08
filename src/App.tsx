@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -11,9 +11,6 @@ import useFetch from "./hooks/useFetch";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
 import PagePostDetail from "./components/page/PagePostDetail";
-import { GoogleOAuthProvider } from "@react-oauth/google";
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,38 +43,31 @@ const App = () => {
   }, []);
 
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <>
       {loading ? (
         <Loading />
       ) : (
         <>
-          <BrowserRouter>
-            <Routes>
-              {isAuthenticated ? (
-                <>
-                  <Route path="/" element={<Home />} />
-                  {/* <Route path="/friends" element={<Friend />} /> */}
-                  {/* <Route path="/postPage" element={<PostPage />} /> */}\
-                  {/* <Route path="/chatbot" element={<Chatbot />} /> */}
-                  {/* <Route path="/postPage" element={<PostPage />} /> */}
-                  <Route
-                    path="/pages/:pageId/posts/:postId"
-                    element={<PagePostDetail />}
-                  />
-                </>
-              ) : (
-                <>
-                  <Route path="/" element={<Login />} />
-                  <Route path="/login" element={<Login />} />{" "}
-                  {/* Thêm route /login */}
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/verify" element={<Verify />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                </>
-              )}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <Routes>
+            {isAuthenticated ? (
+              <>
+                <Route path="/" element={<Home />} />
+                <Route
+                  path="/pages/:pageId/posts/:postId"
+                  element={<PagePostDetail />}
+                />
+              </>
+            ) : (
+              <>
+                <Route path="/" element={<Login />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/verify" element={<Verify />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+              </>
+            )}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
           <ToastContainer
             position="top-right"
             autoClose={5000}
@@ -91,7 +81,7 @@ const App = () => {
           />
         </>
       )}
-    </GoogleOAuthProvider>
+    </>
   );
 };
 

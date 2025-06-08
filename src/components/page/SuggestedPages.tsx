@@ -14,19 +14,24 @@ interface SuggestedPage {
 }
 
 const SuggestedPages: React.FC = () => {
+  const { profile } = useProfile();
+  console.log('SuggestedPages rendering, profile:', profile);
+  
   const [suggestedPages, setSuggestedPages] = useState<SuggestedPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const { profile } = useProfile();
   const { get, post } = useFetch();
   const observer = useRef<IntersectionObserver | null>(null);
   const lastPageRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchSuggestedPages = useCallback(async (pageNum: number) => {
+    console.log('fetchSuggestedPages called with:', { pageNum, profileId: profile?._id });
+    
     try {
       if (pageNum === 0) {
         setIsLoading(true);
@@ -35,10 +40,12 @@ const SuggestedPages: React.FC = () => {
       }
 
       if (!profile?._id) {
-        throw new Error('User ID not found');
+        console.log('No profile ID available, skipping fetch');
+        return;
       }
 
       // Fetch suggested pages
+      console.log('Fetching suggested pages...');
       const suggestedResponse = await get('/v1/page-follower/suggested', {
         isPaged: '1',
         page: pageNum.toString(),
@@ -46,6 +53,7 @@ const SuggestedPages: React.FC = () => {
       });
 
       // Fetch pages where user is a member using the new API endpoint
+      console.log('Fetching member pages...');
       const memberResponse = await get('/v1/page-member/list', {
         user: profile?._id,
         isPaged: '0',
@@ -73,7 +81,9 @@ const SuggestedPages: React.FC = () => {
 
       setTotalPages(suggestedResponse.data.totalPages);
       setCurrentPage(pageNum);
+      hasFetched.current = true;
     } catch (err) {
+      console.error('Error in fetchSuggestedPages:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch suggested pages');
     } finally {
       setIsLoading(false);
@@ -81,11 +91,27 @@ const SuggestedPages: React.FC = () => {
     }
   }, [get, profile?._id]);
 
+  // Effect to fetch initial data
   useEffect(() => {
-    if (profile?._id) {
+    console.log('Profile effect triggered:', { 
+      hasProfile: !!profile, 
+      profileId: profile?._id,
+      hasFetched: hasFetched.current 
+    });
+
+    if (profile?._id && !hasFetched.current) {
+      console.log('Initiating initial fetch');
       fetchSuggestedPages(0);
     }
-  }, [profile?._id, fetchSuggestedPages]);
+  }, [profile, fetchSuggestedPages]);
+
+  // Effect to handle profile loading state
+  useEffect(() => {
+    if (!profile) {
+      console.log('Profile is not loaded yet');
+      setIsLoading(true);
+    }
+  }, [profile]);
 
   // Setup Intersection Observer for infinite scroll
   useEffect(() => {

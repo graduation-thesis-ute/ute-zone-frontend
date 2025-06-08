@@ -4,6 +4,7 @@ import useFetch from '../../hooks/useFetch';
 import { Page, PageResponse } from '../../models/page/Page';
 import PageProfileCard from './PageProfileCard';
 import CreatePageDialog from './CreatePageDialog';
+import UpdatePageDialog from './UpdatePageDialog';
 import PageSettingsDropdown from './PageSettingsDropdown';
 import PageMembersDialog from './PageMembersDialog';
 import { toast } from 'react-toastify';
@@ -29,8 +30,10 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   const observer = useRef<IntersectionObserver | null>(null);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [isUpdatePageOpen, setIsUpdatePageOpen] = useState(false);
+  const [selectedPageForUpdate, setSelectedPageForUpdate] = useState<Page | null>(null);
 
-  const { get, post } = useFetch();
+  const { get, post, put } = useFetch();
 
   // Close settings dropdown when clicking outside
   useEffect(() => {
@@ -55,11 +58,13 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
       const response = await get('/v1/page/list', {
         isPaged: '1',
         page: pageNum.toString(),
-        size: '10'
+        size: '10',
+        status: 1 // Only fetch pages with status 1 (active)
       });
       
       const data: PageResponse = response.data;
-      const myPages = data.content.filter(page => page.isOwner === 1);
+      // Filter pages that are owned by user AND have status 1
+      const myPages = data.content.filter(page => page.isOwner === 1 && page.status === 1);
       
       if (pageNum === 0) {
         setPages(myPages);
@@ -136,7 +141,11 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   };
 
   const handleUpdatePage = (pageId: string) => {
-    setSelectedPageType(`${pageId}/update`);
+    const pageToUpdate = pages.find(p => p._id === pageId);
+    if (pageToUpdate) {
+      setSelectedPageForUpdate(pageToUpdate);
+      setIsUpdatePageOpen(true);
+    }
     setSettingsOpenForPage(null);
   };
 
@@ -213,7 +222,11 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
     }
 
     try {
-      const response = await post(`/v1/page/${pageId}/delete`);
+      const response = await put(`/v1/page/change-status`, {
+        id: pageId,
+        status: 3 // 3 represents deleted status
+      });
+
       if (response.result) {
         toast.success('Đã xóa trang thành công');
         fetchMyPages(0);
@@ -229,6 +242,12 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
   const handleCreatePageSuccess = () => {
     fetchMyPages(0);
     setIsCreatePageOpen(false);
+  };
+
+  const handleUpdatePageSuccess = () => {
+    fetchMyPages(0);
+    setIsUpdatePageOpen(false);
+    setSelectedPageForUpdate(null);
   };
 
   if (isLoading) {
@@ -370,18 +389,9 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
                   page={page}
                   onPageClick={handlePageClick}
                   onSettingsClick={handleSettingsClick}
+                  onUpdate={handleUpdatePage}
+                  onDelete={handleDeletePage}
                 />
-                <div ref={settingsRef} className="absolute top-0 right-0">
-                  <PageSettingsDropdown
-                    isOpen={settingsOpenForPage === page._id}
-                    onClose={() => setSettingsOpenForPage(null)}
-                    onUpdate={() => handleUpdatePage(page._id)}
-                    onAddMember={(e) => handleAddMember(page._id, e)}
-                    onDelete={() => handleDeletePage(page._id)}
-                    onToggleStatus={() => handleToggleStatus(page._id)}
-                    isPublished={page.isPublished}
-                  />
-                </div>
               </div>
             </div>
           ))}
@@ -407,6 +417,18 @@ const MyPageDetail: React.FC<MyPageDetailProps> = ({ setSelectedPageType }) => {
         onClose={() => setIsCreatePageOpen(false)}
         onSuccess={handleCreatePageSuccess}
       />
+
+      {selectedPageForUpdate && (
+        <UpdatePageDialog
+          isOpen={isUpdatePageOpen}
+          onClose={() => {
+            setIsUpdatePageOpen(false);
+            setSelectedPageForUpdate(null);
+          }}
+          onSuccess={handleUpdatePageSuccess}
+          page={selectedPageForUpdate}
+        />
+      )}
 
       {selectedPageId && (
         <PageMembersDialog

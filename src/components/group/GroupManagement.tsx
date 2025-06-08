@@ -90,7 +90,16 @@ interface GroupManagementProps {
     groupId: string;
 }
 
+const isValidObjectId = (id: string) => {
+    return /^[0-9a-fA-F]{24}$/.test(id);
+};
+
 const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
+    // Validate groupId
+    if (!groupId || groupId === "community" || groupId === "my-groups" || groupId === "joined-groups") {
+        return null;
+    }
+
     const [activeTab, setActiveTab] = useState('posts');
     const [group, setGroup] = useState<GroupData | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
@@ -118,7 +127,10 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     useEffect(() => {
         const fetchGroupData = async () => {
             try {
-                setIsLoading(true);
+                if (!isValidObjectId(groupId)) {
+                    console.error('Invalid group ID');
+                    return;
+                }
                 const response = await get(`/v1/group/get/${groupId}`);
                 setGroup(response.data);
             } catch (error) {
@@ -128,9 +140,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
             }
         };
 
-        if (groupId) {
-            fetchGroupData();
-        }
+        fetchGroupData();
     }, [groupId, get]);
 
     useEffect(() => {

@@ -50,7 +50,8 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
         pageId: pageId,
         isPaged: '1',
         page: pageNum.toString(),
-        size: '10'
+        size: '10',
+        status: '2'
       });
       const data: PagePostResponse = response.data;
       if (pageNum === 0) {
@@ -92,6 +93,11 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
       if (observer.current) observer.current.disconnect();
     };
   }, [currentPage, totalPages, isLoadingMore, fetchPagePosts]);
+
+  const handlePostUpdated = () => {
+    setCurrentPage(0);
+    fetchPagePosts(0);
+  };
 
   if (!isOpen) return null;
 
@@ -207,7 +213,10 @@ const PageProfileDialog: React.FC<PageProfileDialogProps> = ({ isOpen, onClose, 
                       key={post._id}
                       ref={index === posts.length - 1 ? lastPostElementRef : undefined}
                     >
-                      <PagePostCard post={post} />
+                      <PagePostCard 
+                        post={post} 
+                        onPostUpdated={handlePostUpdated}
+                      />
                     </div>
                   ))}
                   {isLoadingMore && (

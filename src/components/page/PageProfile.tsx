@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, Bookmark, Settings, Share2, Bell, Loader2, Plus } from 'lucide-react';
+import { Users, Settings, Loader2, Plus } from 'lucide-react';
 //import { useParams } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
 import { Page } from '../../models/page/Page';
@@ -25,8 +25,6 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   const [isLoading, setIsLoading] = useState(!pageData);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  //const [isFollowing, setIsFollowing] = useState(false);
-  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [isPageMember, setIsPageMember] = useState(false);
@@ -72,7 +70,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
         isPaged: '1',
         page: pageNum.toString(),
         size: '10',
-        status: '1'
+        status: '2'
       });
       
       const data: PagePostResponse = response.data;
@@ -203,6 +201,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
   }, [currentFollowersPage, totalFollowersPages, isLoadingFollowers, fetchFollowers]);
 
   const handlePostCreated = () => {
+    setCurrentPage(0);
+    fetchPagePosts(0);
+  };
+
+  const handlePostDeleted = () => {
     setCurrentPage(0);
     fetchPagePosts(0);
   };
@@ -361,26 +364,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
                 <Users size={16} />
                 <span>{page.totalFollowers} người theo dõi</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Bookmark size={16} />
-                <span>Đã tạo {new Date(page.createdAt).toLocaleDateString()}</span>
-              </div>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex space-x-2">
-            {/* <button
-              onClick={() => setIsFollowing(!isFollowing)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                isFollowing
-                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
-            >
-              <Bookmark size={16} />
-              <span>{isFollowing ? 'Đã theo dõi' : 'Theo dõi'}</span>
-            </button> */}
             {isPageMember && (
               <button
                 onClick={() => setShowCreatePost(true)}
@@ -389,17 +377,6 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
                 <Plus size={20} />
               </button>
             )}
-            <button
-              onClick={() => setIsNotificationsEnabled(!isNotificationsEnabled)}
-              className={`p-2 rounded-lg ${
-                isNotificationsEnabled ? 'bg-blue-100 text-blue-500' : 'bg-gray-100 text-gray-500'
-              }`}
-            >
-              <Bell size={20} />
-            </button>
-            <button className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200">
-              <Share2 size={20} />
-            </button>
             <div ref={settingsRef} className="relative">
               <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -411,10 +388,7 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
                 onUpdate={handleUpdatePage}
-                onAddMember={handleAddMember}
                 onDelete={handleDeletePage}
-                onToggleStatus={handleToggleStatus}
-                isPublished={page?.isPublished || false}
               />
             </div>
           </div>
@@ -490,7 +464,11 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
                       key={post._id} 
                       ref={index === posts.length - 1 ? lastPostElementRef : undefined}
                     >
-                      <PagePostCard post={post} />
+                      <PagePostCard 
+                        post={post} 
+                        onPostUpdated={handlePostCreated}
+                        onPostDeleted={handlePostDeleted}
+                      />
                     </div>
                   ))}
                   {isLoadingMore && (
@@ -566,7 +544,25 @@ const PageProfile: React.FC<PageProfileProps> = ({ pageId, pageData }) => {
               </div>
             </div>
           )}
-          {activeTab === 'members' && <PageMembers pageId={pageId} />}
+          {activeTab === 'members' && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Danh sách thành viên</h2>
+                  {isPageMember && (
+                    <button
+                      onClick={() => setIsMembersDialogOpen(true)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2"
+                    >
+                      <Plus size={20} />
+                      <span>Thêm thành viên</span>
+                    </button>
+                  )}
+                </div>
+                <PageMembers pageId={pageId} />
+              </div>
+            </div>
+          )}
           {activeTab === 'photos' && <PagePhotos pageId={pageId} />}
         </div>
       </div>

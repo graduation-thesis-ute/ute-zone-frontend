@@ -20,14 +20,11 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
     useEffect(() => {
         const fetchGroupData = async () => {
             try {
-                // If groupId is "my-groups", "followed", or "community", don't fetch
-                if (groupId === "my-groups" || groupId === "joined-groups" || groupId === "community") {
-                    return;
+                // Chỉ fetch khi groupId là một ID hợp lệ và không phải là tab community
+                if (groupId && groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community" && !groupId.startsWith("community")) {
+                    const response = await get(`/v1/group/get/${groupId}`);
+                    setGroupData(response.data);
                 }
-
-                // Fetch group details
-                const response = await get(`/v1/group/get/${groupId}`);
-                setGroupData(response.data);
             } catch (error) {
                 console.error('Error fetching group data:', error);
             }
@@ -37,29 +34,38 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
     }, [groupId, get]);
 
     const handleGroupClick = (groupId: string) => {
-        // Nếu groupId là ID của một nhóm cụ thể, hiển thị GroupManagement
+        // Không cần setSelectedGroupType cho tab community
         if (groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community") {
             setSelectedGroupType(groupId);
         }
     };
 
     const renderContent = () => {
-        // Nếu groupId là ID của một nhóm cụ thể, hiển thị GroupManagement
-        if (groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community") {
+        // Xử lý các tab đặc biệt trước
+        if (groupId === "community" || groupId === "community-groups") {
+            return <CommunityGroupFeed />;
+        }
+
+        if (groupId === "my-groups") {
+            return <MyGroupDetail onGroupClick={handleGroupClick} />;
+        }
+
+        if (groupId === "joined-groups") {
+            return <JoinedGroups onGroupClick={handleGroupClick} />;
+        }
+
+        // Chỉ render GroupManagement khi groupId là một ID hợp lệ (không phải là các tab đặc biệt)
+        if (groupId && 
+            groupId !== "my-groups" && 
+            groupId !== "joined-groups" && 
+            groupId !== "community" && 
+            groupId !== "community-groups" &&
+            !groupId.startsWith("community")) {
             return <GroupManagement groupId={groupId} />;
         }
 
-        // Ngược lại, hiển thị danh sách nhóm
-        switch (groupId) {
-            case "my-groups":
-                return <MyGroupDetail onGroupClick={handleGroupClick} />;
-            case "joined-groups":
-                return <JoinedGroups onGroupClick={handleGroupClick} />;
-            case "community":
-                return groupData ? <CommunityGroupFeed group={groupData} /> : null;
-            default:
-                return null;
-        }
+        // Fallback: hiển thị CommunityGroupFeed nếu không có groupId hợp lệ
+        return <CommunityGroupFeed />;
     };
 
     return (
