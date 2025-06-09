@@ -22,15 +22,16 @@ import { remoteUrl } from "../types/constant";
 import { Menu, X, Bookmark, Users, Globe } from "lucide-react";
 import NotificationPanel from "../components/notification/NotificationPanel";
 import NotificationPopup from "../components/notification/NotificationPopup";
-//import { useProfile } from "../types/UserContext";
 import VideoCallModal from "../components/chat/VideoCallModal";
-//import { encrypt } from "../types/utils";
 import IncomingCallPopup from "../components/chat/IncomingCallPopup";
 import ringtone from "/receiver-ringtone.mp3";
 import { toast } from "react-toastify";
 import ChatbotList from "../components/chatbot/ChatbotList";
 import ChatbotWindow from "../components/chatbot/ChatbotWindow";
 
+/**
+ * Interface định nghĩa dữ liệu cuộc gọi video
+ */
 export interface CallData {
   callerId: string;
   callerName: string;
@@ -39,20 +40,26 @@ export interface CallData {
 }
 
 const Home = () => {
+  // State quản lý các section được chọn
   const [selectedSection, setSelectedSection] = useState("messages");
   const [selectedFriendSection, setSelectedFriendSection] = useState("friends");
   const [selectedPostSection, setSelectedPostSection] = useState("posts");
   const [selectedPageType, setSelectedPageType] = useState("my-pages");
   const [selectedGroupType, setSelectedGroupType] = useState("my-groups");
+
+  // State quản lý thông tin người dùng và cuộc trò chuyện
   const [userCurrent, setUserCurrent] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [isLoading] = useState(false);
   const { get, put } = useFetch();
+
+  // State quản lý sidebar và responsive
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
+  // State quản lý cuộc gọi video
   const [isInfoComingCall, setIsInfoComingCall] = useState<CallData | null>(
     null
   );
@@ -63,14 +70,20 @@ const Home = () => {
   const [isComingCall, setIsComingCall] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // State quản lý chatbot
   const [selectedChatbotConversation, setSelectedChatbotConversation] =
     useState<any>(null);
 
+  /**
+   * Hàm toggle sidebar trên mobile
+   */
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
-  // const { profile, setProfile } = useProfile();
 
+  /**
+   * Khởi tạo kết nối peer cho WebRTC
+   */
   const initializePeerConnection = () => {
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -109,6 +122,9 @@ const Home = () => {
     return pc;
   };
 
+  /**
+   * Cập nhật thông tin cuộc trò chuyện
+   */
   const handleConversationUpdate = useCallback(
     async (updatedConversation: Conversation) => {
       const response = await get(
@@ -119,10 +135,16 @@ const Home = () => {
     [get]
   );
 
+  /**
+   * Xử lý khi rời khỏi nhóm
+   */
   const handleLeaveGroup = useCallback(() => {
     setSelectedConversation(null);
   }, []);
 
+  /**
+   * Chuyển hướng đến cuộc trò chuyện
+   */
   const handleFowardToConversation = useCallback(
     async (idConversation: string) => {
       const response = await get(`/v1/conversation/get/${idConversation}`);
@@ -131,16 +153,21 @@ const Home = () => {
     [get]
   );
 
+  /**
+   * Lấy thông tin người dùng hiện tại
+   */
   const fetchUserCurrent = useCallback(async () => {
     try {
       const response = await get("/v1/user/profile");
       setUserCurrent(response.data);
-      //setProfile(response.data);
     } catch (error) {
       console.error("Error getting user id:", error);
     }
   }, [get]);
 
+  /**
+   * Lấy danh sách cuộc trò chuyện
+   */
   const fetchConversations = useCallback(async () => {
     try {
       const response = await get("/v1/conversation/list", { isPaged: 0 });
@@ -150,16 +177,19 @@ const Home = () => {
     }
   }, [get]);
 
+  // Effect lấy thông tin người dùng khi component mount
   useEffect(() => {
     fetchUserCurrent();
   }, [fetchUserCurrent]);
 
+  // Effect lấy danh sách cuộc trò chuyện khi section messages được chọn
   useEffect(() => {
     if (selectedSection === "messages" && userCurrent) {
       fetchConversations();
     }
   }, [selectedSection, userCurrent, fetchConversations]);
 
+  // Effect xử lý responsive
   useEffect(() => {
     const handleResize = () => {
       setIsLargeScreen(window.innerWidth >= 1024);
@@ -168,9 +198,10 @@ const Home = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Effect khởi tạo âm thanh chuông
   useEffect(() => {
     audioRef.current = new Audio(ringtone);
-    audioRef.current.loop = true; // Lặp lại âm thanh chuông
+    audioRef.current.loop = true;
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -179,6 +210,7 @@ const Home = () => {
     };
   }, []);
 
+  // Effect xử lý âm thanh chuông khi có cuộc gọi đến
   useEffect(() => {
     if (isComingCall && audioRef.current) {
       audioRef.current.play().catch((error) => {
@@ -186,10 +218,13 @@ const Home = () => {
       });
     } else if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0; // Reset thời gian phát
+      audioRef.current.currentTime = 0;
     }
   }, [isComingCall]);
 
+  /**
+   * Các hàm xử lý tin nhắn
+   */
   const handleMessageChange = useCallback(() => {
     if (selectedSection === "messages" && userCurrent) {
       fetchConversations();
@@ -210,6 +245,7 @@ const Home = () => {
 
   const handleUpdateConversation = useCallback(() => {}, []);
 
+  // Khởi tạo socket cho chat
   const socketChat = useSocketChat({
     userId: userCurrent?._id,
     remoteUrl,
@@ -220,6 +256,7 @@ const Home = () => {
     onHandleUpdateConversation: handleUpdateConversation,
   });
 
+  // Khởi tạo socket cho video call
   const socketVideo = useSocketVideoCall({
     socket: socketChat,
     onIncomingVideoCall: (data: CallData) => {
@@ -286,6 +323,9 @@ const Home = () => {
     },
   });
 
+  /**
+   * Các hàm xử lý cuộc gọi video
+   */
   const acceptCall = async () => {
     if (!isInfoComingCall) return;
 
@@ -397,6 +437,7 @@ const Home = () => {
     <div className="flex h-screen">
       <NavBar setSelectedSection={setSelectedSection} />
 
+      {/* Nút toggle sidebar trên mobile */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-blue-600 text-white rounded-full shadow-lg"
@@ -404,6 +445,7 @@ const Home = () => {
         {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
+      {/* Overlay khi sidebar mở trên mobile */}
       {isSidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
@@ -411,6 +453,7 @@ const Home = () => {
         />
       )}
 
+      {/* Sidebar */}
       <div
         className={`
           fixed lg:relative
@@ -426,6 +469,7 @@ const Home = () => {
           }
         `}
       >
+        {/* Render các component tương ứng với section được chọn */}
         {selectedSection === "messages" ? (
           <ChatList
             conversations={conversations}
@@ -543,6 +587,7 @@ const Home = () => {
         ) : null}
       </div>
 
+      {/* Main content */}
       <div className="flex-1 bg-white">
         {selectedSection === "messages" ? (
           selectedConversation ? (
@@ -612,15 +657,22 @@ const Home = () => {
           </div>
         ) : selectedSection === "pages" ? (
           <div className="h-full">
-            <Page pageId={selectedPageType} setSelectedPageType={setSelectedPageType} />
+            <Page
+              pageId={selectedPageType}
+              setSelectedPageType={setSelectedPageType}
+            />
           </div>
         ) : selectedSection === "groups" ? (
           <div className="h-full">
-            <Group groupId={selectedGroupType} setSelectedGroupType={setSelectedGroupType} />
+            <Group
+              groupId={selectedGroupType}
+              setSelectedGroupType={setSelectedGroupType}
+            />
           </div>
         ) : null}
       </div>
 
+      {/* Popup cuộc gọi đến */}
       {isComingCall && isInfoComingCall && (
         <IncomingCallPopup
           callerName={isInfoComingCall.callerName}
@@ -630,6 +682,7 @@ const Home = () => {
         />
       )}
 
+      {/* Modal cuộc gọi video */}
       {isVideoCallActive && (
         <VideoCallModal
           localStream={localStream}

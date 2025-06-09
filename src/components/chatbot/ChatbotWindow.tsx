@@ -20,7 +20,7 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
   const [messages, setMessages] = useState<any[]>([
     {
       type: "bot",
-      content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+      content: " ☀️\nMình có thể giúp gì cho bạn?",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -93,7 +93,7 @@ const ChatbotWindow: React.FC<ChatbotWindowProps> = ({
         setMessages([
           {
             type: "bot",
-            content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+            content: "Xin chào ☀️\nMình có thể giúp gì cho bạn?",
             timestamp: new Date().toISOString(),
           },
         ]);

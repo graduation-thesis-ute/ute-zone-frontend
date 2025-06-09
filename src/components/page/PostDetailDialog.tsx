@@ -65,13 +65,11 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
+  //const [currentReaction, setCurrentReaction] = useState<number | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { get, post: postComment } = useFetch();
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showReactions, setShowReactions] = useState(false);
-  const [currentReaction, setCurrentReaction] = useState<number | null>(null);
-  const [hoveredReaction, setHoveredReaction] = useState<number | null>(null);
-  const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reactionButtonRef = useRef<HTMLDivElement>(null);
   const reactionMenuRef = useRef<HTMLDivElement>(null);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
@@ -85,16 +83,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const contentRef = useRef<HTMLParagraphElement>(null);
   const [showReadMore, setShowReadMore] = useState(false);
-
-  const reactionTypes = [
-    { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
-    { type: 2, icon: Heart, label: 'Yêu thích', color: 'text-red-500' },
-    { type: 3, icon: Laugh, label: 'Haha', color: 'text-yellow-500' },
-    { type: 4, icon: AlertCircle, label: 'Wow', color: 'text-purple-500' },
-    { type: 5, icon: Frown, label: 'Buồn', color: 'text-gray-500' },
-    { type: 6, icon: Angry, label: 'Phẫn nộ', color: 'text-orange-500' },
-    { type: 7, icon: Smile, label: 'Thương thương', color: 'text-pink-500' }
-  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -133,36 +121,6 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     }
   }, [post.content]);
 
-  const handleShowReactions = () => {
-    if (reactionTimeoutRef.current) {
-      clearTimeout(reactionTimeoutRef.current);
-      reactionTimeoutRef.current = null;
-    }
-    setShowReactions(true);
-  };
-
-  const handleHideReactions = () => {
-    reactionTimeoutRef.current = setTimeout(() => {
-      if (!hoveredReaction) {
-        setShowReactions(false);
-      }
-    }, 300);
-  };
-
-  const handleReactionMenuEnter = () => {
-    if (reactionTimeoutRef.current) {
-      clearTimeout(reactionTimeoutRef.current);
-      reactionTimeoutRef.current = null;
-    }
-  };
-
-  const handleReactionMenuLeave = () => {
-    reactionTimeoutRef.current = setTimeout(() => {
-      setShowReactions(false);
-      setHoveredReaction(null);
-    }, 300);
-  };
-
   const fetchComments = async () => {
     try {
       setIsLoading(true);
@@ -199,10 +157,10 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       const userReaction = reactions.find((reaction: any) => reaction.user._id === profile?._id);
       if (userReaction) {
         setIsLiked(true);
-        setCurrentReaction(userReaction.reactionType);
+        //setCurrentReaction(userReaction.reactionType);
       } else {
         setIsLiked(false);
-        setCurrentReaction(null);
+        //setCurrentReaction(null);
       }
     } catch (error) {
       console.error('Error checking like status:', error);

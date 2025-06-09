@@ -7,7 +7,6 @@ import {
   PhoneOff,
   Maximize,
   Minimize,
-  MessageSquare,
   Users,
   Timer,
 } from "lucide-react";
@@ -299,13 +298,6 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
             title={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             {isFullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
-          </button>
-
-          <button
-            className="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors shadow"
-            title="Open chat"
-          >
-            <MessageSquare size={20} />
           </button>
         </div>
 

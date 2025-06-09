@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import MyGroupDetail from '../components/group/MyGroupDetail';
 //import FollowedGroupDetail from '../components/group/FollowedGroupDetail';
 import CommunityGroupFeed from '../components/group/CommunityGroupFeed';
@@ -13,7 +13,7 @@ interface GroupProps {
 }
 
 const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
-    const [groupData, setGroupData] = useState(null);
+    //const [groupData, setGroupData] = useState(null);
     const { get } = useFetch();
     //const navigate = useNavigate();
 
@@ -23,7 +23,7 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
                 // Chỉ fetch khi groupId là một ID hợp lệ và không phải là tab community
                 if (groupId && groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community" && !groupId.startsWith("community")) {
                     const response = await get(`/v1/group/get/${groupId}`);
-                    setGroupData(response.data);
+                    //setGroupData(response.data);
                 }
             } catch (error) {
                 console.error('Error fetching group data:', error);

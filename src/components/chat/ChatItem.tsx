@@ -45,7 +45,9 @@ const ChatItem: React.FC<ChatItemProps> = ({
       <div className="flex-1 max-w-72 ml-2">
         <h3 className="font-semibold flex justify-between">
           <span className={`${hasUnreadMessages ? "text-blue-600" : ""}`}>
-            {conversation.name}
+            {conversation.name.length > 25
+              ? conversation.name.slice(0, 25) + "..."
+              : conversation.name}
           </span>
           <span className="text-xs text-gray-500 ml-auto mt-1">
             {conversation.lastMessage

@@ -31,6 +31,9 @@ import VideoCallModal from "../components/chat/VideoCallModal";
 import CallingPopup from "../components/chat/CallingPopup";
 import ringtone from "/caller-ringtone.mp3";
 
+/**
+ * Component ChatWindow - Hiển thị cửa sổ chat và xử lý các tương tác
+ */
 const ChatWindow: React.FC<ChatWindowProps> = ({
   conversation,
   userCurrent,
@@ -40,6 +43,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   handleConversationDeleted,
   onFowardMessage,
 }) => {
+  // State quản lý tin nhắn
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingUpdate, setLoadingUpdate] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +81,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   //const navigate = useNavigate();
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  // const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isConfirmLeaveDialogOpen, setIsConfirmLeaveDialogOpen] =
     useState(false);
   const [isMemberListOpen, setIsMemberListOpen] = useState(false);
@@ -100,10 +104,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [callDuration, setCallDuration] = useState<number>(0);
   const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
 
+  /**
+   * Khởi tạo kết nối peer cho WebRTC
+   * @param receiverId - ID của người nhận cuộc gọi
+   * @returns RTCPeerConnection - Kết nối peer đã được khởi tạo
+   */
   const initializePeerConnection = (receiverId: string) => {
+    // Tạo kết nối peer với các máy chủ STUN/TURN
     const pc = new RTCPeerConnection({
       iceServers: [
+        // Máy chủ STUN của Google để tìm địa chỉ IP công khai
         { urls: "stun:stun.l.google.com:19302" },
+        // Máy chủ TURN để relay dữ liệu khi không thể kết nối trực tiếp
         {
           urls: "turn:openrelay.metered.ca:80",
           username: "openrelayproject",
@@ -112,8 +124,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ],
     });
 
+    // Xử lý khi có ICE candidate mới
     pc.onicecandidate = (event) => {
       if (event.candidate) {
+        // Gửi ICE candidate cho người nhận qua socket
         socketVideo?.emit("ICE_CANDIDATE", {
           to: receiverId,
           from: userCurrent?._id,
@@ -122,12 +136,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     };
 
+    // Xử lý khi nhận được stream từ người nhận
     pc.ontrack = (event) => {
       if (event.streams[0]) {
         setRemoteStream(event.streams[0]);
       }
     };
 
+    // Xử lý khi trạng thái kết nối ICE thay đổi
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === "failed") {
         endCall();
@@ -138,14 +154,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return pc;
   };
 
+  /**
+   * Xử lý khi click vào avatar người dùng
+   */
   const handleAvatarClick = (user: any) => {
     setSelectedUser(user);
   };
 
+  /**
+   * Đóng popup thông tin người dùng
+   */
   const closePopup = () => {
     setSelectedUser(null);
   };
 
+  // Effect lấy danh sách thành viên
   useEffect(() => {
     const fetchMembersList = async () => {
       setLoadingMembers(true);
@@ -165,6 +188,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     fetchMembersList();
   }, [conversation._id, get]);
 
+  /**
+   * Xử lý xóa thành viên khỏi nhóm
+   */
   const handleRemoveMember = async (memberId: string | null) => {
     setLoadingUpdate(true);
     try {
@@ -183,6 +209,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xử lý giải tán nhóm
+   */
   const handleDisbandGroup = async () => {
     setLoadingUpdate(true);
     try {
@@ -198,6 +227,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xử lý rời khỏi nhóm
+   */
   const handleLeaveGroup = async (memberId: string | null) => {
     setLoadingUpdate(true);
     try {
@@ -212,6 +244,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xóa cuộc trò chuyện
+   */
   const deleteConversation = async (conversationId: any) => {
     try {
       const response = await del(`/v1/conversation/delete/${conversationId}`);
@@ -223,6 +258,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Chọn/bỏ chọn thành viên
+   */
   const toggleMember = (userId: string) => {
     setSelectedMembers((prevMembers) =>
       prevMembers.includes(userId)
@@ -231,6 +269,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   };
 
+  /**
+   * Lấy danh sách tin nhắn
+   */
   const fetchMessages = useCallback(
     async (pageNumber: number) => {
       if (!conversation._id) return;
@@ -265,6 +306,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [conversation._id, get]
   );
 
+  /**
+   * Xử lý tin nhắn mới
+   */
   const handleNewMessage = useCallback(
     async (messageId: string) => {
       try {
@@ -280,6 +324,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [get, onMessageChange]
   );
 
+  /**
+   * Xử lý cập nhật tin nhắn qua socket
+   */
   const handleUpdateMessageSocket = useCallback(
     async (messageId: string) => {
       try {
@@ -298,6 +345,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [get, onMessageChange]
   );
 
+  /**
+   * Xử lý xóa tin nhắn qua socket
+   */
   const handleDeleteMessageSocket = useCallback(
     (messageId: string) => {
       setMessages((prevMessages) =>
@@ -308,6 +358,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [onMessageChange]
   );
 
+  /**
+   * Xử lý cập nhật cuộc trò chuyện qua socket
+   */
   const handleUpdateConversationSocket = useCallback(
     async (conversationId: string) => {
       try {
@@ -322,6 +375,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [get]
   );
 
+  // Khởi tạo socket cho chat
   const socketChat = useSocketChat({
     conversationId: conversation._id,
     userId: userCurrent?._id,
@@ -333,8 +387,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onHandleUpdateConversation: handleUpdateConversationSocket,
   });
 
+  // Khởi tạo socket cho video call
   const socketVideo = useSocketVideoCall({
     socket: socketChat,
+    // Xử lý khi người nhận chấp nhận cuộc gọi
     onVideoCallAccepted: async (data: any) => {
       setReceiverInfo(null);
       const receiverId = membersList.find(
@@ -344,38 +400,43 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setReceiverInfo(data);
         setIsCalling(false);
         setIsVideoCallActive(true);
+        // Tạo offer và bắt đầu đếm thời gian cuộc gọi
         await createOffer();
-        // Bắt đầu đếm thời gian cuộc gọi
-        //setCallStartTime(new Date());
         callDurationInterval.current = setInterval(() => {
           setCallDuration((prev) => prev + 1);
         }, 1000);
       }
     },
+    // Xử lý khi người nhận từ chối cuộc gọi
     onVideoCallRejected: () => {
       setIsCalling(false);
     },
+    // Xử lý khi nhận được offer từ người gọi
     onOffer: async (data: any) => {
       const receiverId = membersList.find(
         (m) => m.user._id !== userCurrent?._id
       )?.user._id;
       if (data.from === receiverId && peerConnectionRef.current) {
         try {
+          // Thiết lập remote description từ offer
           await peerConnectionRef.current.setRemoteDescription(
             new RTCSessionDescription(data.sdp)
           );
+          // Tạo và gửi answer
           await createAnswer();
         } catch (error) {
           console.error("ChatWindow: Error handling offer:", error);
         }
       }
     },
+    // Xử lý khi nhận được answer từ người nhận
     onAnswer: async (data: any) => {
       const receiverId = membersList.find(
         (m) => m.user._id !== userCurrent?._id
       )?.user._id;
       if (data.from === receiverId && peerConnectionRef.current) {
         try {
+          // Thiết lập remote description từ answer
           await peerConnectionRef.current.setRemoteDescription(
             new RTCSessionDescription(data.sdp)
           );
@@ -384,12 +445,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }
       }
     },
+    // Xử lý khi nhận được ICE candidate từ người kia
     onIceCandidate: async (data: any) => {
       const receiverId = membersList.find(
         (m) => m.user._id !== userCurrent?._id
       )?.user._id;
       if (data.from === receiverId && peerConnectionRef.current) {
         try {
+          // Thêm ICE candidate vào kết nối peer
           await peerConnectionRef.current.addIceCandidate(
             new RTCIceCandidate(data.candidate)
           );
@@ -398,18 +461,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }
       }
     },
+    // Xử lý khi người nhận kết thúc cuộc gọi trong khi đang gọi
     onEndCallWhileCallingByReceiver: () => {
       endCallWhileCallingFromReceiver();
     },
+    // Xử lý khi người nhận kết thúc cuộc gọi
     onEndCallByReceiver: () => {
       handleEndCallByReceiver();
     },
   });
 
-  // Khởi tạo audio element khi component mount
+  // Effect khởi tạo âm thanh chuông
   useEffect(() => {
     audioRef.current = new Audio(ringtone);
-    audioRef.current.loop = true; // Lặp lại âm thanh chuông
+    audioRef.current.loop = true;
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -418,7 +483,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, []);
 
-  // Phát âm thanh chuông khi đang gọi
+  // Effect xử lý âm thanh chuông khi đang gọi
   useEffect(() => {
     if (isCalling && audioRef.current) {
       audioRef.current.play().catch((error) => {
@@ -426,12 +491,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       });
     } else if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0; // Reset thời gian phát
+      audioRef.current.currentTime = 0;
     }
   }, [isCalling]);
 
+  /**
+   * Bắt đầu cuộc gọi video
+   * - Lấy stream từ camera và microphone
+   * - Khởi tạo kết nối peer
+   * - Gửi yêu cầu cuộc gọi cho người nhận
+   */
   const startCall = async () => {
     try {
+      // Lấy thông tin người nhận
       const receiverId = membersList.find(
         (m) => m.user._id !== userCurrent?._id
       )?.user._id;
@@ -448,18 +520,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         return;
       }
 
+      // Lấy stream từ camera và microphone
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       setLocalStream(stream);
       setIsCalling(true);
+
+      // Khởi tạo kết nối peer
       const pc = initializePeerConnection(receiverId);
 
+      // Thêm các track từ stream vào kết nối peer
       stream.getTracks().forEach((track) => {
         pc.addTrack(track, stream);
       });
 
+      // Gửi yêu cầu cuộc gọi cho người nhận
       socketVideo?.emit("START_VIDEO_CALL", {
         conversationId: conversation._id,
         callerId: userCurrent?._id,
@@ -473,13 +550,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Tạo offer cho cuộc gọi video
+   * - Tạo SDP offer
+   * - Thiết lập local description
+   * - Gửi offer cho người nhận
+   */
   const createOffer = async () => {
     const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
       ?.user._id;
     if (peerConnectionRef.current && receiverId) {
       try {
+        // Tạo SDP offer
         const offer = await peerConnectionRef.current.createOffer();
+        // Thiết lập local description
         await peerConnectionRef.current.setLocalDescription(offer);
+        // Gửi offer cho người nhận
         socketVideo?.emit("OFFER", {
           to: receiverId,
           from: userCurrent?._id,
@@ -491,13 +577,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Tạo answer cho cuộc gọi video
+   * - Tạo SDP answer
+   * - Thiết lập local description
+   * - Gửi answer cho người gọi
+   */
   const createAnswer = async () => {
     const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
       ?.user._id;
     if (peerConnectionRef.current && receiverId) {
       try {
+        // Tạo SDP answer
         const answer = await peerConnectionRef.current.createAnswer();
+        // Thiết lập local description
         await peerConnectionRef.current.setLocalDescription(answer);
+        // Gửi answer cho người gọi
         socketVideo?.emit("ANSWER", {
           to: receiverId,
           from: userCurrent?._id,
@@ -509,6 +604,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Kết thúc cuộc gọi khi đang gọi
+   */
   const endCallWhileCalling = () => {
     const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
       ?.user._id;
@@ -542,6 +640,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     console.log("Call ended while calling by caller ChatWindow");
   };
 
+  /**
+   * Kết thúc cuộc gọi khi người nhận từ chối
+   */
   const endCallWhileCallingFromReceiver = () => {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
@@ -568,7 +669,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     console.log("Call ended while calling by receiver ChatWindow");
   };
 
-  // Auto-dismiss incoming call after timeout
+  // Effect tự động kết thúc cuộc gọi sau timeout
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -613,6 +714,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, [isCalling, socketVideo, userCurrent]);
 
+  /**
+   * Kết thúc cuộc gọi
+   */
   const endCall = () => {
     const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
       ?.user._id;
@@ -653,6 +757,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     console.log("Call ended by caller ChatWindow");
   };
 
+  /**
+   * Xử lý kết thúc cuộc gọi bởi người nhận
+   */
   const handleEndCallByReceiver = () => {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
@@ -680,6 +787,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     console.log("Call ended by caller ChatWindow");
   };
 
+  /**
+   * Xử lý kết thúc cuộc gọi bởi người gọi
+   */
   const handleEndCallByCaller = () => {
     const receiverId = membersList.find((m) => m.user._id !== userCurrent?._id)
       ?.user._id;
@@ -713,10 +823,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     console.log("Call ended by caller ChatWindow");
   };
 
+  /**
+   * Cuộn xuống cuối tin nhắn
+   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Effect cuộn xuống cuối tin nhắn
   useEffect(() => {
     if (isScrollToBottom) {
       scrollToBottom();
@@ -724,26 +838,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [isScrollToBottom]);
 
+  // Effect lấy thông tin chủ nhóm
   useEffect(() => {
     getOwner();
   }, [conversation]);
 
+  /**
+   * Lấy thông tin chủ nhóm
+   */
   const getOwner = () => {
     if (conversation.isOwner === 1) {
       setIsOwner(conversation.owner._id === userCurrent?._id ? 1 : 0);
     }
   };
 
+  /**
+   * Xử lý cuộn tin nhắn
+   */
   const handleScroll = async () => {
     if (hasMore && !isLoadingMessages) {
       fetchMessages(page + 1);
     }
   };
 
+  // Effect lấy tin nhắn khi component mount
   useEffect(() => {
     fetchMessages(0);
   }, [fetchMessages]);
 
+  /**
+   * Gửi tin nhắn mới
+   */
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage && !selectedImage) return;
@@ -773,12 +898,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Định dạng thời gian cuộc gọi
+   */
   const formatCallDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  /**
+   * Gửi tin nhắn cho cuộc gọi
+   */
   const handleSendMessageForChat = async (newMessage: string) => {
     try {
       const encryptedMessage = encrypt(
@@ -794,6 +925,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xóa tin nhắn
+   */
   const handleDeleteMessage = async (messageId: string) => {
     try {
       await del(`/v1/message/delete/${messageId}`);
@@ -802,6 +936,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Cập nhật tin nhắn
+   */
   const handleUpdateMessage = async (
     messageId: string,
     content: string,
@@ -832,6 +969,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xử lý reaction tin nhắn
+   */
   const handleReaction = async (messageId: string) => {
     try {
       if (messages.find((msg) => msg._id === messageId)?.isReacted === 1) {
@@ -848,6 +988,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   //   setActiveDropdown(activeDropdown === messageId ? null : messageId);
   // };
 
+  /**
+   * Lấy danh sách bạn bè
+   */
   const fetchFriends = async () => {
     try {
       const response = await get("/v1/friendship/list", { getListKind: 0 });
@@ -863,6 +1006,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Thêm thành viên vào nhóm
+   */
   const handleAddMember = async () => {
     setLoadingUpdate(true);
     try {
@@ -889,6 +1035,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Cập nhật quyền hạn của cuộc trò chuyện
+   */
   const updateConversationPermission = async (
     id: string,
     permissions: {
@@ -911,6 +1060,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Cập nhật thông tin cuộc trò chuyện
+   */
   const handleUpdate = async (formData: any) => {
     setLoadingUpdate(true);
     setError(null);
@@ -923,7 +1075,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsEditDialogOpen(false);
       onMessageChange();
       onConversationUpdateInfo(conversation);
-      toast.success("Conversation updated successfully!");
+      toast.success("Cập nhật thành công!");
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -931,17 +1083,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  /**
+   * Xóa hình ảnh đã chọn
+   */
   const removeSelectedImage = () => {
     setSelectedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  /**
+   * Chuyển tiếp tin nhắn
+   */
   const handleForwardMessage = (friendObject: Friends) => {
     onFowardMessage(friendObject.conversation._id);
   };
 
   return (
     <div className="flex flex-col h-full bg-gray-100">
+      {/* Header cuộc trò chuyện */}
       <ChatHeader
         conversation={conversation}
         userCurrent={userCurrent}
@@ -1006,6 +1165,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onStartVideoCall={startCall}
       />
 
+      {/* Popup đang gọi */}
       {isCalling && (
         <CallingPopup
           receiverId={receiverInfo?.receiverId}
@@ -1017,6 +1177,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         />
       )}
 
+      {/* Modal cuộc gọi video */}
       {isVideoCallActive && (
         <VideoCallModal
           localStream={localStream}
@@ -1029,6 +1190,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         />
       )}
 
+      {/* Danh sách tin nhắn */}
       <MessageList
         messages={messages}
         userCurrent={userCurrent}
@@ -1056,6 +1218,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onUpdateMessage={handleUpdateMessage}
       />
 
+      {/* Input nhập tin nhắn */}
       <ChatInput
         newMessage={newMessage}
         selectedImage={selectedImage}
@@ -1072,6 +1235,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onSubmit={handleSendMessage}
       />
 
+      {/* Modal thêm thành viên */}
       <AddMemberModal
         isOpen={isAddMemberModalOpen}
         searchQuery={searchQuery}
@@ -1084,6 +1248,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onAddMember={handleAddMember}
       />
 
+      {/* Modal quản lý thành viên */}
       <ManageMembersModal
         isOpen={isManageMembersModalOpen}
         isCanUpdate={isCanUpdate || 0}
@@ -1093,9 +1258,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           updateConversationPermission(conversation._id, permissions)
         }
         onClose={() => setIsManageMembersModalOpen(false)}
-        onDisbandGroup={() => setIsConfirmDialogOpen(true)}
+        onDisbandGroup={() => handleDisbandGroup()}
       />
 
+      {/* Modal danh sách thành viên */}
       <MemberListModal
         isOpen={isMemberListOpen}
         membersList={membersList}
@@ -1109,6 +1275,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onAvatarClick={handleAvatarClick}
       />
 
+      {/* Dialog thông báo thành công */}
       <AlertDialog
         isVisible={isAlertDialogOpen}
         title="Success"
@@ -1116,6 +1283,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onAccept={() => setIsAlertDialogOpen(false)}
       />
 
+      {/* Dialog thông báo lỗi */}
       <AlertErrorDialog
         isVisible={isAlertErrorDialogOpen}
         title="Failed"
@@ -1123,6 +1291,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onAccept={() => setIsAlertErrorDialogOpen(false)}
       />
 
+      {/* Dialog xác nhận xóa thành viên */}
       <ConfimationDialog
         isVisible={isConfirmDelMemDialogOpen}
         title="Confirm"
@@ -1135,23 +1304,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onCancel={() => setIsConfirmDelMemDialogOpen(false)}
       />
 
-      <ConfimationDialog
-        isVisible={isConfirmDialogOpen}
-        title="Confirm"
-        color="red"
-        message="Are you sure you want to disband the group?"
-        onConfirm={() => {
-          handleDisbandGroup();
-          setIsConfirmDialogOpen(false);
-        }}
-        onCancel={() => setIsConfirmDialogOpen(false)}
-      />
-
+      {/* Dialog xác nhận rời nhóm */}
       <ConfimationDialog
         isVisible={isConfirmLeaveDialogOpen}
-        title="Confirm"
+        title="Xác nhận"
         color="red"
-        message="Are you sure you want to leave the group?"
+        message="Bạn muốn rời khỏi nhóm này?"
         onConfirm={() => {
           handleLeaveGroup(memberIdSelected);
           setIsConfirmLeaveDialogOpen(false);
@@ -1159,6 +1317,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onCancel={() => setIsConfirmLeaveDialogOpen(false)}
       />
 
+      {/* Popup chỉnh sửa thông tin */}
       <EditProfilePopup
         conversation={conversation}
         onUpdate={handleUpdate}
@@ -1166,6 +1325,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onClose={() => setIsEditDialogOpen(false)}
       />
 
+      {/* Popup thông tin người dùng */}
       <UserInfoPopup
         user={selectedUser}
         onClose={closePopup}
@@ -1173,8 +1333,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onFowardMessage={handleForwardMessage}
       />
 
+      {/* Dialog loading */}
       <LoadingDialog isVisible={isLoadingUpdate} />
 
+      {/* Dialog thông báo lỗi */}
       {error && (
         <AlertErrorDialog
           isVisible={true}
