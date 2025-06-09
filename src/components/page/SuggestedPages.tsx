@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, Bookmark, TrendingUp, Loader2 } from 'lucide-react';
+import { Users, Bookmark, TrendingUp, Loader2, Check } from 'lucide-react';
 import { useProfile } from '../../types/UserContext';
 import useFetch from '../../hooks/useFetch';
 import PageProfileDialog from './PageProfileDialog';
+import { toast } from 'react-toastify';
 
 interface SuggestedPage {
   _id: string;
@@ -28,6 +29,7 @@ const SuggestedPages: React.FC = () => {
   const lastPageRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const hasFetched = useRef(false);
+  const [followedPages, setFollowedPages] = useState<Set<string>>(new Set());
 
   const fetchSuggestedPages = useCallback(async (pageNum: number) => {
     console.log('fetchSuggestedPages called with:', { pageNum, profileId: profile?._id });
@@ -139,10 +141,23 @@ const SuggestedPages: React.FC = () => {
     if (e) e.stopPropagation();
     try {
       await post('/v1/page-follower/follow', { pageId });
+      setFollowedPages(prev => new Set([...prev, pageId]));
+      toast.success('Theo dõi trang thành công!', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       // Refresh suggested pages after following
       fetchSuggestedPages(0);
     } catch (err) {
       console.error('Failed to follow page:', err);
+      toast.error('Không thể theo dõi trang. Vui lòng thử lại!', {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
   };
 
@@ -175,7 +190,7 @@ const SuggestedPages: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center space-x-2 mb-4">
         <TrendingUp size={20} className="text-blue-500" />
@@ -183,7 +198,7 @@ const SuggestedPages: React.FC = () => {
       </div>
 
       {/* Suggested Pages List */}
-      <div className="space-y-4 h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="space-y-4 flex-1 overflow-y-auto">
         {suggestedPages.map((page, index) => (
           <div 
             key={page._id} 
@@ -239,9 +254,18 @@ const SuggestedPages: React.FC = () => {
               {/* Follow Button */}
               <button
                 onClick={(e) => handleFollow(page._id, e)}
-                className="flex-shrink-0 text-gray-500 hover:text-blue-600 transition-colors"
+                className={`flex-shrink-0 transition-colors ${
+                  followedPages.has(page._id)
+                    ? 'text-green-500'
+                    : 'text-gray-500 hover:text-blue-600'
+                }`}
+                disabled={followedPages.has(page._id)}
               >
-                <Bookmark size={20} />
+                {followedPages.has(page._id) ? (
+                  <Check size={20} />
+                ) : (
+                  <Bookmark size={20} />
+                )}
               </button>
             </div>
           </div>

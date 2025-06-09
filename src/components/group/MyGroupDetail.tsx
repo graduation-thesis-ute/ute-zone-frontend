@@ -39,14 +39,14 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogVisible, setIsCreateDialogVisible] = useState(false);
-    const { get } = useFetch();
+    const { get, del } = useFetch();
 
     const fetchMyGroups = async () => {
         try {
             setIsLoading(true);
             const response = await get('/v1/group/list?isOwner=1');
             const data: GroupResponse = response.data;
-            const myGroups = data.content.filter(group => group.isOwner === 1) || [];
+            const myGroups = data.content.filter(group => group.isOwner === 1 && group.status !== 1) || [];
             setGroups(myGroups);
             console.log("myGroups", myGroups);
         } catch (error) {
@@ -61,19 +61,26 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
         fetchMyGroups();
     }, []);
 
+    const handleDeleteGroup = async (groupId: string) => {
+        try {
+            await del(`/v1/group/${groupId}`);
+            await fetchMyGroups();
+        } catch (error) {
+            console.error('Error deleting group:', error);
+        }
+    };
+
+    const handleGroupUpdated = () => {
+        fetchMyGroups();
+    };
+
     const handleSettingsClick = (e: React.MouseEvent, groupId: string) => {
         e.stopPropagation();
-        // Xử lý khi click vào nút settings
         console.log('Settings clicked for group:', groupId);
     };
 
     const handleCreateGroup = () => {
         setIsCreateDialogVisible(true);
-    };
-
-    const handleGroupCreated = () => {
-        // Refresh the groups list
-        fetchMyGroups();
     };
 
     const filteredGroups = groups.filter(group => 
@@ -83,7 +90,6 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
 
     return (
         <div className="p-6">
-            {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Nhóm của tôi</h1>
                 <button 
@@ -95,7 +101,6 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
                 </button>
             </div>
 
-            {/* Search and Filter */}
             <div className="flex items-center space-x-4 mb-6">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -113,7 +118,6 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
                 </button>
             </div>
 
-            {/* Groups List */}
             {isLoading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -133,6 +137,8 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
                             avatar={group.avatarUrl}
                             onGroupClick={onGroupClick}
                             onSettingsClick={handleSettingsClick}
+                            onDeleteClick={handleDeleteGroup}
+                            onGroupUpdated={handleGroupUpdated}
                         />
                     ))}
                 </div>
@@ -155,7 +161,7 @@ const MyGroupDetail: React.FC<MyGroupDetailProps> = ({ onGroupClick }) => {
             <CreateGroupDialog
                 isVisible={isCreateDialogVisible}
                 onClose={() => setIsCreateDialogVisible(false)}
-                onGroupCreated={handleGroupCreated}
+                onGroupCreated={handleGroupUpdated}
             />
         </div>
     );

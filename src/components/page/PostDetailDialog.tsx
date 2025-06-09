@@ -1,19 +1,25 @@
-import React, { useState, useEffect, useRef } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
-import { PagePost } from "../../models/page/PagePost";
-import useFetch from "../../hooks/useFetch";
-import { useProfile } from "../../types/UserContext";
-import {
-  X,
-  Send,
-  Loader2,
-  Image as ImageIcon,
-  ThumbsUp,
-  MessageCircle,
+import React, { useState, useEffect, useRef } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { PagePost } from '../../models/page/PagePost';
+import useFetch from '../../hooks/useFetch';
+import { useProfile } from '../../types/UserContext';
+import { 
+  X, 
+  Send, 
+  Loader2, 
+  Image as ImageIcon, 
+  ThumbsUp, 
+  MessageCircle, 
   MoreHorizontal,
-} from "lucide-react";
-import { uploadImage2 } from "../../types/utils";
+  Heart,
+  Laugh,
+  AlertCircle,
+  Frown,
+  Angry,
+  Smile
+} from 'lucide-react';
+import { uploadImage2 } from '../../types/utils';
 
 interface PostDetailDialogProps {
   isOpen: boolean;
@@ -48,52 +54,35 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   isOpen,
   onClose,
   post,
-  onPostUpdated,
+  onPostUpdated
 }) => {
   const { profile } = useProfile();
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
+  const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
+  //const [currentReaction, setCurrentReaction] = useState<number | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const { get, post: postComment } = useFetch();
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
-    null
-  );
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showReactions, setShowReactions] = useState(false);
-  // const [currentReaction, setCurrentReaction] = useState<number | null>(null);
-  // const [hoveredReaction, setHoveredReaction] = useState<number | null>(null);
-  // const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reactionButtonRef = useRef<HTMLDivElement>(null);
   const reactionMenuRef = useRef<HTMLDivElement>(null);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
-  const [replyContent, setReplyContent] = useState("");
-  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(
-    null
-  );
+  const [replyContent, setReplyContent] = useState('');
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
-  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
-    new Set()
-  );
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [replyPages, setReplyPages] = useState<Record<string, number>>({});
   const [replyHasMore, setReplyHasMore] = useState<Record<string, boolean>>({});
-  const [commentReplies, setCommentReplies] = useState<
-    Record<string, Comment[]>
-  >({});
-
-  // const reactionTypes = [
-  //   { type: 1, icon: ThumbsUp, label: "Thích", color: "text-blue-500" },
-  //   { type: 2, icon: Heart, label: "Yêu thích", color: "text-red-500" },
-  //   { type: 3, icon: Laugh, label: "Haha", color: "text-yellow-500" },
-  //   { type: 4, icon: AlertCircle, label: "Wow", color: "text-purple-500" },
-  //   { type: 5, icon: Frown, label: "Buồn", color: "text-gray-500" },
-  //   { type: 6, icon: Angry, label: "Phẫn nộ", color: "text-orange-500" },
-  //   { type: 7, icon: Smile, label: "Thương thương", color: "text-pink-500" },
-  // ];
+  const [commentReplies, setCommentReplies] = useState<Record<string, Comment[]>>({});
+  const [isContentExpanded, setIsContentExpanded] = useState(false);
+  const contentRef = useRef<HTMLParagraphElement>(null);
+  const [showReadMore, setShowReadMore] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -117,62 +106,41 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showReactions]);
 
-  // const handleShowReactions = () => {
-  //   if (reactionTimeoutRef.current) {
-  //     clearTimeout(reactionTimeoutRef.current);
-  //     reactionTimeoutRef.current = null;
-  //   }
-  //   setShowReactions(true);
-  // };
-
-  // const handleHideReactions = () => {
-  //   reactionTimeoutRef.current = setTimeout(() => {
-  //     if (!hoveredReaction) {
-  //       setShowReactions(false);
-  //     }
-  //   }, 300);
-  // };
-
-  // const handleReactionMenuEnter = () => {
-  //   if (reactionTimeoutRef.current) {
-  //     clearTimeout(reactionTimeoutRef.current);
-  //     reactionTimeoutRef.current = null;
-  //   }
-  // };
-
-  // const handleReactionMenuLeave = () => {
-  //   reactionTimeoutRef.current = setTimeout(() => {
-  //     setShowReactions(false);
-  //     setHoveredReaction(null);
-  //   }, 300);
-  // };
+  useEffect(() => {
+    if (contentRef.current) {
+      const lineHeight = parseInt(window.getComputedStyle(contentRef.current).lineHeight);
+      const height = contentRef.current.scrollHeight;
+      const maxHeight = lineHeight * 3; // Show 3 lines by default
+      setShowReadMore(height > maxHeight);
+    }
+  }, [post.content]);
 
   const fetchComments = async () => {
     try {
       setIsLoading(true);
       const response = await get(`/v1/page-post-comment/list`, {
         pagePost: post._id,
-        isPaged: "1",
+        isPaged: '1',
         page: currentPage.toString(),
-        size: "10",
-        ignoreChildren: "1",
+        size: '10',
+        ignoreChildren: '1'
       });
-
+      
       const newComments = response.data.content;
       if (currentPage === 0) {
         setComments(newComments);
       } else {
-        setComments((prev) => [...prev, ...newComments]);
+        setComments(prev => [...prev, ...newComments]);
       }
       setHasMore(currentPage < response.data.totalPages - 1);
     } catch (error) {
-      console.error("Error fetching comments:", error);
+      console.error('Error fetching comments:', error);
     } finally {
       setIsLoading(false);
     }
@@ -182,22 +150,20 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     try {
       const response = await get(`/v1/page-post-reaction/list`, {
         pagePost: post._id,
-        isPaged: "0",
+        isPaged: '0'
       });
-
+      
       const reactions = response.data.content;
-      const userReaction = reactions.find(
-        (reaction: any) => reaction.user._id === profile?._id
-      );
+      const userReaction = reactions.find((reaction: any) => reaction.user._id === profile?._id);
       if (userReaction) {
         setIsLiked(true);
-        // setCurrentReaction(userReaction.reactionType);
+        //setCurrentReaction(userReaction.reactionType);
       } else {
         setIsLiked(false);
-        // setCurrentReaction(null);
+        //setCurrentReaction(null);
       }
     } catch (error) {
-      console.error("Error checking like status:", error);
+      console.error('Error checking like status:', error);
     }
   };
 
@@ -212,7 +178,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error reading file:", error);
+      console.error('Error reading file:', error);
     }
   };
 
@@ -228,14 +194,14 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         imageUrl = await uploadImage2(imagePreview, postComment);
       }
 
-      const response = await postComment("/v1/page-post-comment/create", {
+      const response = await postComment('/v1/page-post-comment/create', {
         pagePost: post._id,
         content: newComment,
-        imageUrl,
+        imageUrl
       });
 
       if (response.result) {
-        setNewComment("");
+        setNewComment('');
         setImagePreview(null);
         setComments([]);
         setCurrentPage(0);
@@ -245,7 +211,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         }
       }
     } catch (error) {
-      console.error("Error posting comment:", error);
+      console.error('Error posting comment:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -253,21 +219,15 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
-    if (
-      scrollHeight - scrollTop <= clientHeight * 1.5 &&
-      !isLoading &&
-      hasMore
-    ) {
-      setCurrentPage((prev) => prev + 1);
+    if (scrollHeight - scrollTop <= clientHeight * 1.5 && !isLoading && hasMore) {
+      setCurrentPage(prev => prev + 1);
     }
   };
 
   const handleToggleLike = async () => {
     try {
       if (isLiked) {
-        const response = await postComment(
-          `/v1/page-post-reaction/delete/${post._id}`
-        );
+        const response = await postComment(`/v1/page-post-reaction/delete/${post._id}`);
         if (response.result) {
           setIsLiked(false);
           if (onPostUpdated) {
@@ -277,7 +237,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       } else {
         const response = await postComment(`/v1/page-post-reaction/create`, {
           pagePost: post._id,
-          reactionType: 1,
+          reactionType: 1
         });
         if (response.result) {
           setIsLiked(true);
@@ -287,19 +247,19 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         }
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error('Error toggling like:', error);
     }
   };
 
   const formatTime = (dateString: string | undefined) => {
-    if (!dateString) return "Vừa xong";
+    if (!dateString) return 'Vừa xong';
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Vừa xong";
+      if (isNaN(date.getTime())) return 'Vừa xong';
       return formatDistanceToNow(date, { addSuffix: true, locale: vi });
     } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Vừa xong";
+      console.error('Error formatting date:', error);
+      return 'Vừa xong';
     }
   };
 
@@ -324,7 +284,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             src={post.imageUrls[0]}
             alt="Post image"
             className="w-full rounded-md object-cover cursor-pointer hover:opacity-95 transition-opacity"
-            style={{ maxHeight: "500px" }}
+            style={{ maxHeight: '500px' }}
             onClick={() => handleImageClick(0)}
           />
         </div>
@@ -356,7 +316,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
               src={post.imageUrls[0]}
               alt="Post image 1"
               className="w-full h-full object-cover rounded-md cursor-pointer hover:opacity-95 transition-opacity"
-              style={{ height: "340px" }}
+              style={{ height: '340px' }}
               onClick={() => handleImageClick(0)}
             />
           </div>
@@ -366,7 +326,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                 src={url}
                 alt={`Post image ${index + 2}`}
                 className="w-full h-full object-cover rounded-md cursor-pointer hover:opacity-95 transition-opacity"
-                style={{ height: "169px" }}
+                style={{ height: '169px' }}
                 onClick={() => handleImageClick(index + 1)}
               />
             </div>
@@ -378,8 +338,8 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
     return (
       <div className="grid grid-cols-2 gap-1 mb-3">
         {post.imageUrls.slice(0, 4).map((url, index) => (
-          <div
-            key={index}
+          <div 
+            key={index} 
             className="overflow-hidden relative"
             onClick={() => handleImageClick(index)}
           >
@@ -390,9 +350,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
             />
             {index === 3 && post.imageUrls!.length > 4 && (
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white rounded-md">
-                <span className="text-xl font-semibold">
-                  +{post.imageUrls!.length - 4}
-                </span>
+                <span className="text-xl font-semibold">+{post.imageUrls!.length - 4}</span>
               </div>
             )}
           </div>
@@ -406,29 +364,27 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-        <button
+        <button 
           onClick={() => setSelectedImageIndex(null)}
           className="absolute top-4 right-4 text-white p-2 rounded-full bg-black bg-opacity-50 hover:bg-opacity-70"
         >
           <X size={24} />
         </button>
-
+        
         <div className="relative max-w-4xl max-h-[90vh] w-full">
           <img
             src={post.imageUrls[selectedImageIndex]}
             alt={`Full size image ${selectedImageIndex + 1}`}
             className="max-w-full max-h-[90vh] object-contain mx-auto"
           />
-
+          
           {post.imageUrls.length > 1 && (
             <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
               {post.imageUrls.map((_, index) => (
                 <button
                   key={index}
                   className={`w-2 h-2 rounded-full ${
-                    index === selectedImageIndex
-                      ? "bg-white"
-                      : "bg-white bg-opacity-50"
+                    index === selectedImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -438,7 +394,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
               ))}
             </div>
           )}
-
+          
           {selectedImageIndex > 0 && (
             <button
               className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-70"
@@ -450,7 +406,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
               &lt;
             </button>
           )}
-
+          
           {selectedImageIndex < post.imageUrls.length - 1 && (
             <button
               className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-70"
@@ -469,13 +425,11 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const handleReplyClick = (comment: Comment) => {
     setReplyingTo(comment);
-    setReplyContent("");
+    setReplyContent('');
     setReplyImagePreview(null);
   };
 
-  const handleReplyImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleReplyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -486,7 +440,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error reading file:", error);
+      console.error('Error reading file:', error);
     }
   };
 
@@ -502,15 +456,15 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         imageUrl = await uploadImage2(replyImagePreview, postComment);
       }
 
-      const response = await postComment("/v1/page-post-comment/create", {
+      const response = await postComment('/v1/page-post-comment/create', {
         pagePost: post._id,
         content: replyContent,
         imageUrl,
-        parent: replyingTo._id,
+        parent: replyingTo._id
       });
 
       if (response.result) {
-        setReplyContent("");
+        setReplyContent('');
         setReplyImagePreview(null);
         setReplyingTo(null);
         setComments([]);
@@ -521,7 +475,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
         }
       }
     } catch (error) {
-      console.error("Error posting reply:", error);
+      console.error('Error posting reply:', error);
     } finally {
       setIsSubmittingReply(false);
     }
@@ -529,52 +483,52 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const fetchReplies = async (commentId: string, page: number = 0) => {
     try {
-      console.log("Fetching replies for comment:", commentId);
-      const response = await get("/v1/page-post-comment/list", {
+      console.log('Fetching replies for comment:', commentId);
+      const response = await get('/v1/page-post-comment/list', {
         parent: commentId,
         pagePost: post._id,
         page: page.toString(),
-        size: "5",
-        isPaged: "1",
+        size: '5',
+        isPaged: '1'
       });
 
-      console.log("Replies response:", response);
+      console.log('Replies response:', response);
       const newReplies = response.data.content;
       if (page === 0) {
-        setCommentReplies((prev) => ({
+        setCommentReplies(prev => ({
           ...prev,
-          [commentId]: newReplies,
+          [commentId]: newReplies
         }));
       } else {
-        setCommentReplies((prev) => ({
+        setCommentReplies(prev => ({
           ...prev,
-          [commentId]: [...(prev[commentId] || []), ...newReplies],
+          [commentId]: [...(prev[commentId] || []), ...newReplies]
         }));
       }
 
-      setReplyHasMore((prev) => ({
+      setReplyHasMore(prev => ({
         ...prev,
-        [commentId]: page < response.data.totalPages - 1,
+        [commentId]: page < response.data.totalPages - 1
       }));
-      setReplyPages((prev) => ({
+      setReplyPages(prev => ({
         ...prev,
-        [commentId]: page,
+        [commentId]: page
       }));
     } catch (error) {
-      console.error("Error fetching replies:", error);
+      console.error('Error fetching replies:', error);
     }
   };
 
   const handleToggleReplies = async (comment: Comment) => {
-    console.log("Toggling replies for comment:", comment._id);
+    console.log('Toggling replies for comment:', comment._id);
     if (expandedReplies.has(comment._id)) {
-      setExpandedReplies((prev) => {
+      setExpandedReplies(prev => {
         const next = new Set(prev);
         next.delete(comment._id);
         return next;
       });
     } else {
-      setExpandedReplies((prev) => new Set([...prev, comment._id]));
+      setExpandedReplies(prev => new Set([...prev, comment._id]));
       if (!commentReplies[comment._id]) {
         await fetchReplies(comment._id);
       }
@@ -588,28 +542,26 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   const handleCommentReaction = async (comment: Comment) => {
     try {
-      const response = await postComment("/v1/page-post-comment/reaction", {
+      const response = await postComment('/v1/page-post-comment/reaction', {
         commentId: comment._id,
-        reactionType: 1,
+        reactionType: 1
       });
 
       if (response.result) {
-        setComments((prev) =>
-          prev.map((c) =>
-            c._id === comment._id
-              ? {
-                  ...c,
-                  isReacted: c.isReacted ? 0 : 1,
-                  totalCommentReactions: c.isReacted
-                    ? c.totalCommentReactions - 1
-                    : c.totalCommentReactions + 1,
-                }
-              : c
-          )
-        );
+        setComments(prev => prev.map(c => 
+          c._id === comment._id 
+            ? { 
+                ...c, 
+                isReacted: c.isReacted ? 0 : 1,
+                totalCommentReactions: c.isReacted 
+                  ? c.totalCommentReactions - 1 
+                  : c.totalCommentReactions + 1
+              }
+            : c
+        ));
       }
     } catch (error) {
-      console.error("Error toggling comment reaction:", error);
+      console.error('Error toggling comment reaction:', error);
     }
   };
 
@@ -618,198 +570,190 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-          <div className="p-4 border-b flex items-center justify-center relative">
-            <h2 className="text-xl font-semibold text-center w-full">
-              Bài viết
-            </h2>
+        <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl overflow-hidden">
+          <div className="p-4 border-b flex-shrink-0 flex items-center justify-between">
+            <div className="w-10"></div>
+            <h2 className="text-xl font-semibold text-center flex-1">Bài viết</h2>
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-full absolute right-2"
+              className="p-2 hover:bg-gray-100 rounded-full"
             >
               <X size={20} />
             </button>
           </div>
 
-          <div className="p-4 border-b">
-            <div className="flex items-center space-x-3 mb-3">
-              <img
-                src={post.page.avatarUrl || "/default-avatar.png"}
-                alt={post.page.name}
-                className="w-10 h-10 rounded-full object-cover border"
-              />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-base">{post.page.name}</h3>
-                  <button className="text-gray-500">
-                    <MoreHorizontal size={18} />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  {formatTime(post.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">
-              {post.content}
-            </p>
-
-            {renderImageGallery()}
-
-            <div className="flex items-center justify-between text-xs text-gray-500 py-2 border-t border-b">
-              <div className="flex items-center space-x-1">
-                {post.totalReactions > 0 && (
-                  <>
-                    <div className="flex items-center space-x-1">
-                      <div className="bg-blue-500 rounded-full p-1">
-                        <ThumbsUp size={10} className="text-white" />
-                      </div>
-                      <span>{post.totalReactions}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex space-x-3">
-                <span>{post.totalComments || 0} bình luận</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between py-1">
-              <button
-                onClick={handleToggleLike}
-                className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
-                  isLiked ? "text-blue-500" : "text-gray-500"
-                }`}
-              >
-                <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
-                <span className="text-sm font-medium">
-                  {isLiked ? "Đã thích" : "Thích"}
-                </span>
-              </button>
-
-              <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
-                <MessageCircle size={18} />
-                <span className="text-sm font-medium">Bình luận</span>
-              </button>
-            </div>
-          </div>
-
-          <div
-            className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"
-            onScroll={handleScroll}
-          >
-            {comments.map((comment, index) => (
-              <div key={`${comment._id}-${index}`} className="flex space-x-2">
+          <div className="overflow-y-auto flex-1" onScroll={handleScroll}>
+            <div className="p-4 border-b">
+              <div className="flex items-center space-x-3 mb-3">
                 <img
-                  src={comment.user.avatarUrl || "/default-avatar.png"}
-                  alt={comment.user.displayName}
-                  className="w-8 h-8 rounded-full object-cover"
+                  src={post.page.avatarUrl || '/default-avatar.png'}
+                  alt={post.page.name}
+                  className="w-10 h-10 rounded-full object-cover border"
                 />
                 <div className="flex-1">
-                  <div className="bg-gray-100 rounded-2xl p-3 inline-block">
-                    <p className="font-semibold text-sm">
-                      {comment.user.displayName}
-                    </p>
-                    <p className="text-sm">{comment.content}</p>
-                    {comment.imageUrl && (
-                      <img
-                        src={comment.imageUrl}
-                        alt="Comment image"
-                        className="mt-2 rounded-lg max-h-48 object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 mt-1 px-2">
-                    <button
-                      className={`text-xs font-medium hover:underline ${
-                        comment.isReacted ? "text-blue-500" : ""
-                      }`}
-                      onClick={() => handleCommentReaction(comment)}
-                    >
-                      Thích{" "}
-                      {comment.totalCommentReactions > 0 &&
-                        `(${comment.totalCommentReactions})`}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-base">{post.page.name}</h3>
+                    <button className="text-gray-500">
+                      <MoreHorizontal size={18} />
                     </button>
-                    <button
-                      className="text-xs font-medium hover:underline"
-                      onClick={() => handleReplyClick(comment)}
-                    >
-                      Phản hồi
-                    </button>
-                    <p className="text-xs text-gray-500">
-                      {formatTime(comment.createdAt)}
-                    </p>
-                    {comment.isUpdated === 1 && (
-                      <span className="text-xs text-gray-400">
-                        đã chỉnh sửa
-                      </span>
-                    )}
                   </div>
+                  <p className="text-xs text-gray-500">
+                    {formatTime(post.createdAt)}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="relative">
+                <p 
+                  ref={contentRef}
+                  className={`text-gray-800 text-sm mb-3 whitespace-pre-wrap ${
+                    !isContentExpanded && showReadMore ? 'line-clamp-3' : ''
+                  }`}
+                >
+                  {post.content}
+                </p>
+                {showReadMore && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsContentExpanded(!isContentExpanded);
+                    }}
+                    className="text-blue-500 text-sm font-medium hover:underline mb-3"
+                  >
+                    {isContentExpanded ? 'Thu gọn' : 'Đọc thêm'}
+                  </button>
+                )}
+              </div>
+              
+              {renderImageGallery()}
+              
+              <div className="flex items-center justify-between text-xs text-gray-500 py-2 border-t border-b">
+                <div className="flex items-center space-x-1">
+                  {post.totalReactions > 0 && (
+                    <>
+                      <div className="flex items-center space-x-1">
+                        <div className="bg-blue-500 rounded-full p-1">
+                          <ThumbsUp size={10} className="text-white" />
+                        </div>
+                        <span>{post.totalReactions}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex space-x-3">
+                  <span>{post.totalComments || 0} bình luận</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between py-1">
+                <button 
+                  onClick={handleToggleLike}
+                  className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
+                    isLiked ? 'text-blue-500' : 'text-gray-500'
+                  }`}
+                >
+                  <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
+                  <span className="text-sm font-medium">
+                    {isLiked ? 'Đã thích' : 'Thích'}
+                  </span>
+                </button>
+                
+                <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                  <MessageCircle size={18} />
+                  <span className="text-sm font-medium">Bình luận</span>
+                </button>
+              </div>
+            </div>
 
-                  {(comment.totalChildren ?? 0) > 0 && (
-                    <div className="mt-2 ml-4">
-                      <button
-                        className="text-xs text-blue-500 hover:underline"
-                        onClick={() => handleToggleReplies(comment)}
+            <div className="p-3 space-y-3 bg-gray-50">
+              {comments.map((comment, index) => (
+                <div key={`${comment._id}-${index}`} className="flex space-x-2">
+                  <img
+                    src={comment.user.avatarUrl || '/default-avatar.png'}
+                    alt={comment.user.displayName}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="bg-gray-100 rounded-2xl p-3 inline-block">
+                      <p className="font-semibold text-sm">{comment.user.displayName}</p>
+                      <p className="text-sm">{comment.content}</p>
+                      {comment.imageUrl && (
+                        <img 
+                          src={comment.imageUrl} 
+                          alt="Comment image" 
+                          className="mt-2 rounded-lg max-h-48 object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 mt-1 px-2">
+                      <button 
+                        className={`text-xs font-medium hover:underline ${
+                          comment.isReacted ? 'text-blue-500' : ''
+                        }`}
+                        onClick={() => handleCommentReaction(comment)}
                       >
-                        {expandedReplies.has(comment._id)
-                          ? "Ẩn phản hồi"
-                          : `Xem ${comment.totalChildren} phản hồi`}
+                        Thích {comment.totalCommentReactions > 0 && `(${comment.totalCommentReactions})`}
                       </button>
+                      <button 
+                        className="text-xs font-medium hover:underline"
+                        onClick={() => handleReplyClick(comment)}
+                      >
+                        Phản hồi
+                      </button>
+                      <p className="text-xs text-gray-500">
+                        {formatTime(comment.createdAt)}
+                      </p>
+                      {comment.isUpdated === 1 && (
+                        <span className="text-xs text-gray-400">đã chỉnh sửa</span>
+                      )}
+                    </div>
 
-                      {expandedReplies.has(comment._id) &&
-                        commentReplies[comment._id] && (
+                    {(comment.totalChildren ?? 0) > 0 && (
+                      <div className="mt-2 ml-4">
+                        <button
+                          className="text-xs text-blue-500 hover:underline"
+                          onClick={() => handleToggleReplies(comment)}
+                        >
+                          {expandedReplies.has(comment._id) ? 'Ẩn phản hồi' : `Xem ${comment.totalChildren} phản hồi`}
+                        </button>
+
+                        {expandedReplies.has(comment._id) && commentReplies[comment._id] && (
                           <div className="mt-2 space-y-2">
-                            {commentReplies[comment._id].map(
-                              (reply, replyIndex) => (
-                                <div
-                                  key={`${reply._id}-${replyIndex}`}
-                                  className="flex space-x-2"
-                                >
-                                  <img
-                                    src={
-                                      reply.user.avatarUrl ||
-                                      "/default-avatar.png"
-                                    }
-                                    alt={reply.user.displayName}
-                                    className="w-6 h-6 rounded-full object-cover"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="bg-gray-100 rounded-2xl p-2 inline-block">
-                                      <p className="font-semibold text-xs">
-                                        {reply.user.displayName}
-                                      </p>
-                                      <p className="text-xs">{reply.content}</p>
-                                      {reply.imageUrl && (
-                                        <img
-                                          src={reply.imageUrl}
-                                          alt="Reply image"
-                                          className="mt-1 rounded-lg max-h-32 object-cover"
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="flex items-center space-x-2 mt-1 px-2">
-                                      <button
-                                        className={`text-xs font-medium hover:underline ${
-                                          reply.isReacted ? "text-blue-500" : ""
-                                        }`}
-                                        onClick={() =>
-                                          handleCommentReaction(reply)
-                                        }
-                                      >
-                                        Thích{" "}
-                                        {reply.totalCommentReactions > 0 &&
-                                          `(${reply.totalCommentReactions})`}
-                                      </button>
-                                      <p className="text-xs text-gray-500">
-                                        {formatTime(reply.createdAt)}
-                                      </p>
-                                    </div>
+                            {commentReplies[comment._id].map((reply, replyIndex) => (
+                              <div key={`${reply._id}-${replyIndex}`} className="flex space-x-2">
+                                <img
+                                  src={reply.user.avatarUrl || '/default-avatar.png'}
+                                  alt={reply.user.displayName}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                                <div className="flex-1">
+                                  <div className="bg-gray-100 rounded-2xl p-2 inline-block">
+                                    <p className="font-semibold text-xs">{reply.user.displayName}</p>
+                                    <p className="text-xs">{reply.content}</p>
+                                    {reply.imageUrl && (
+                                      <img 
+                                        src={reply.imageUrl} 
+                                        alt="Reply image" 
+                                        className="mt-1 rounded-lg max-h-32 object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2 mt-1 px-2">
+                                    <button 
+                                      className={`text-xs font-medium hover:underline ${
+                                        reply.isReacted ? 'text-blue-500' : ''
+                                      }`}
+                                      onClick={() => handleCommentReaction(reply)}
+                                    >
+                                      Thích {reply.totalCommentReactions > 0 && `(${reply.totalCommentReactions})`}
+                                    </button>
+                                    <p className="text-xs text-gray-500">
+                                      {formatTime(reply.createdAt)}
+                                    </p>
                                   </div>
                                 </div>
-                              )
-                            )}
+                              </div>
+                            ))}
 
                             {replyHasMore[comment._id] && (
                               <button
@@ -821,87 +765,82 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                             )}
                           </div>
                         )}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
-                  {replyingTo?._id === comment._id && (
-                    <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
-                      <div className="flex items-center space-x-2">
-                        <img
-                          src={profile?.avatarUrl || "/default-avatar.png"}
-                          alt="Your avatar"
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                        <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          <input
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Viết phản hồi..."
-                            className="w-full bg-transparent focus:outline-none text-xs"
+                    {replyingTo?._id === comment._id && (
+                      <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={profile?.avatarUrl || "/default-avatar.png"}
+                            alt="Your avatar"
+                            className="w-6 h-6 rounded-full object-cover"
                           />
-                          <div className="flex space-x-2">
-                            {!replyImagePreview && (
-                              <label className="cursor-pointer text-blue-500">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleReplyImageUpload}
-                                  className="hidden"
-                                />
-                                <ImageIcon size={16} />
-                              </label>
-                            )}
-                            <button
-                              type="submit"
-                              disabled={
-                                isSubmittingReply ||
-                                (!replyContent.trim() && !replyImagePreview)
-                              }
-                              className="text-blue-500 disabled:text-gray-400"
-                            >
-                              {isSubmittingReply ? (
-                                <Loader2 className="animate-spin" size={16} />
-                              ) : (
-                                <Send size={16} />
+                          <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
+                            <input
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              placeholder="Viết phản hồi..."
+                              className="w-full bg-transparent focus:outline-none text-xs"
+                            />
+                            <div className="flex space-x-2">
+                              {!replyImagePreview && (
+                                <label className="cursor-pointer text-blue-500">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleReplyImageUpload}
+                                    className="hidden"
+                                  />
+                                  <ImageIcon size={16} />
+                                </label>
                               )}
-                            </button>
+                              <button
+                                type="submit"
+                                disabled={isSubmittingReply || (!replyContent.trim() && !replyImagePreview)}
+                                className="text-blue-500 disabled:text-gray-400"
+                              >
+                                {isSubmittingReply ? (
+                                  <Loader2 className="animate-spin" size={16} />
+                                ) : (
+                                  <Send size={16} />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      {replyImagePreview && (
-                        <div className="relative mt-1 ml-8 inline-block">
-                          <img
-                            src={replyImagePreview}
-                            alt="Preview"
-                            className="max-h-24 rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setReplyImagePreview(null)}
-                            className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 text-white rounded-full"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      )}
-                    </form>
-                  )}
+                        
+                        {replyImagePreview && (
+                          <div className="relative mt-1 ml-8 inline-block">
+                            <img
+                              src={replyImagePreview}
+                              alt="Preview"
+                              className="max-h-24 rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setReplyImagePreview(null)}
+                              className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 text-white rounded-full"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </form>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="animate-spin text-blue-500" size={24} />
-              </div>
-            )}
-            <div ref={commentsEndRef} />
+              ))}
+              {isLoading && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="animate-spin text-blue-500" size={24} />
+                </div>
+              )}
+              <div ref={commentsEndRef} />
+            </div>
           </div>
 
-          <form
-            onSubmit={handleSubmitComment}
-            className="p-3 border-t bg-white"
-          >
+          <form onSubmit={handleSubmitComment} className="p-3 border-t bg-white flex-shrink-0">
             <div className="flex items-center space-x-2">
               <img
                 src={profile?.avatarUrl || "/default-avatar.png"}
@@ -929,9 +868,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                   )}
                   <button
                     type="submit"
-                    disabled={
-                      isSubmitting || (!newComment.trim() && !imagePreview)
-                    }
+                    disabled={isSubmitting || (!newComment.trim() && !imagePreview)}
                     className="text-blue-500 disabled:text-gray-400"
                   >
                     {isSubmitting ? (
@@ -943,7 +880,7 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
                 </div>
               </div>
             </div>
-
+            
             {imagePreview && (
               <div className="relative mt-2 ml-10 inline-block">
                 <img
