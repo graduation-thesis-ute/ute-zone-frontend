@@ -76,7 +76,7 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
             </div>
 
             {/* Suggested groups sidebar */}
-            <div className="w-80 border-l border-gray-200 bg-gray-50 overflow-y-auto">
+            <div className="w-[32rem] border-l border-gray-200 bg-gray-50 overflow-y-auto">
                 <SuggestedGroups />
             </div>
         </div>

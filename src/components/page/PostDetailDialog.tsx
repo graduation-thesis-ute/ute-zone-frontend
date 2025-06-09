@@ -82,6 +82,9 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   const [replyPages, setReplyPages] = useState<Record<string, number>>({});
   const [replyHasMore, setReplyHasMore] = useState<Record<string, boolean>>({});
   const [commentReplies, setCommentReplies] = useState<Record<string, Comment[]>>({});
+  const [isContentExpanded, setIsContentExpanded] = useState(false);
+  const contentRef = useRef<HTMLParagraphElement>(null);
+  const [showReadMore, setShowReadMore] = useState(false);
 
   const reactionTypes = [
     { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
@@ -120,6 +123,15 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showReactions]);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      const lineHeight = parseInt(window.getComputedStyle(contentRef.current).lineHeight);
+      const height = contentRef.current.scrollHeight;
+      const maxHeight = lineHeight * 3; // Show 3 lines by default
+      setShowReadMore(height > maxHeight);
+    }
+  }, [post.content]);
 
   const handleShowReactions = () => {
     if (reactionTimeoutRef.current) {
@@ -600,257 +612,277 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-          <div className="p-4 border-b flex items-center justify-center relative">
-            <h2 className="text-xl font-semibold text-center w-full">Bài viết</h2>
+        <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl overflow-hidden">
+          <div className="p-4 border-b flex-shrink-0 flex items-center justify-between">
+            <div className="w-10"></div>
+            <h2 className="text-xl font-semibold text-center flex-1">Bài viết</h2>
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-full absolute right-2"
+              className="p-2 hover:bg-gray-100 rounded-full"
             >
               <X size={20} />
             </button>
           </div>
 
-          <div className="p-4 border-b">
-            <div className="flex items-center space-x-3 mb-3">
-              <img
-                src={post.page.avatarUrl || '/default-avatar.png'}
-                alt={post.page.name}
-                className="w-10 h-10 rounded-full object-cover border"
-              />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-base">{post.page.name}</h3>
-                  <button className="text-gray-500">
-                    <MoreHorizontal size={18} />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  {formatTime(post.createdAt)}
-                </p>
-              </div>
-            </div>
-            
-            <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">{post.content}</p>
-            
-            {renderImageGallery()}
-            
-            <div className="flex items-center justify-between text-xs text-gray-500 py-2 border-t border-b">
-              <div className="flex items-center space-x-1">
-                {post.totalReactions > 0 && (
-                  <>
-                    <div className="flex items-center space-x-1">
-                      <div className="bg-blue-500 rounded-full p-1">
-                        <ThumbsUp size={10} className="text-white" />
-                      </div>
-                      <span>{post.totalReactions}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex space-x-3">
-                <span>{post.totalComments || 0} bình luận</span>
-              </div>
-            </div>
-            
-            <div className="flex justify-between py-1">
-              <button 
-                onClick={handleToggleLike}
-                className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
-                  isLiked ? 'text-blue-500' : 'text-gray-500'
-                }`}
-              >
-                <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
-                <span className="text-sm font-medium">
-                  {isLiked ? 'Đã thích' : 'Thích'}
-                </span>
-              </button>
-              
-              <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
-                <MessageCircle size={18} />
-                <span className="text-sm font-medium">Bình luận</span>
-              </button>
-            </div>
-          </div>
-
-          <div 
-            className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"
-            onScroll={handleScroll}
-          >
-            {comments.map((comment, index) => (
-              <div key={`${comment._id}-${index}`} className="flex space-x-2">
+          <div className="overflow-y-auto flex-1" onScroll={handleScroll}>
+            <div className="p-4 border-b">
+              <div className="flex items-center space-x-3 mb-3">
                 <img
-                  src={comment.user.avatarUrl || '/default-avatar.png'}
-                  alt={comment.user.displayName}
-                  className="w-8 h-8 rounded-full object-cover"
+                  src={post.page.avatarUrl || '/default-avatar.png'}
+                  alt={post.page.name}
+                  className="w-10 h-10 rounded-full object-cover border"
                 />
                 <div className="flex-1">
-                  <div className="bg-gray-100 rounded-2xl p-3 inline-block">
-                    <p className="font-semibold text-sm">{comment.user.displayName}</p>
-                    <p className="text-sm">{comment.content}</p>
-                    {comment.imageUrl && (
-                      <img 
-                        src={comment.imageUrl} 
-                        alt="Comment image" 
-                        className="mt-2 rounded-lg max-h-48 object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 mt-1 px-2">
-                    <button 
-                      className={`text-xs font-medium hover:underline ${
-                        comment.isReacted ? 'text-blue-500' : ''
-                      }`}
-                      onClick={() => handleCommentReaction(comment)}
-                    >
-                      Thích {comment.totalCommentReactions > 0 && `(${comment.totalCommentReactions})`}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-base">{post.page.name}</h3>
+                    <button className="text-gray-500">
+                      <MoreHorizontal size={18} />
                     </button>
-                    <button 
-                      className="text-xs font-medium hover:underline"
-                      onClick={() => handleReplyClick(comment)}
-                    >
-                      Phản hồi
-                    </button>
-                    <p className="text-xs text-gray-500">
-                      {formatTime(comment.createdAt)}
-                    </p>
-                    {comment.isUpdated === 1 && (
-                      <span className="text-xs text-gray-400">đã chỉnh sửa</span>
-                    )}
                   </div>
-
-                  {(comment.totalChildren ?? 0) > 0 && (
-                    <div className="mt-2 ml-4">
-                      <button
-                        className="text-xs text-blue-500 hover:underline"
-                        onClick={() => handleToggleReplies(comment)}
-                      >
-                        {expandedReplies.has(comment._id) ? 'Ẩn phản hồi' : `Xem ${comment.totalChildren} phản hồi`}
-                      </button>
-
-                      {expandedReplies.has(comment._id) && commentReplies[comment._id] && (
-                        <div className="mt-2 space-y-2">
-                          {commentReplies[comment._id].map((reply, replyIndex) => (
-                            <div key={`${reply._id}-${replyIndex}`} className="flex space-x-2">
-                              <img
-                                src={reply.user.avatarUrl || '/default-avatar.png'}
-                                alt={reply.user.displayName}
-                                className="w-6 h-6 rounded-full object-cover"
-                              />
-                              <div className="flex-1">
-                                <div className="bg-gray-100 rounded-2xl p-2 inline-block">
-                                  <p className="font-semibold text-xs">{reply.user.displayName}</p>
-                                  <p className="text-xs">{reply.content}</p>
-                                  {reply.imageUrl && (
-                                    <img 
-                                      src={reply.imageUrl} 
-                                      alt="Reply image" 
-                                      className="mt-1 rounded-lg max-h-32 object-cover"
-                                    />
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2 mt-1 px-2">
-                                  <button 
-                                    className={`text-xs font-medium hover:underline ${
-                                      reply.isReacted ? 'text-blue-500' : ''
-                                    }`}
-                                    onClick={() => handleCommentReaction(reply)}
-                                  >
-                                    Thích {reply.totalCommentReactions > 0 && `(${reply.totalCommentReactions})`}
-                                  </button>
-                                  <p className="text-xs text-gray-500">
-                                    {formatTime(reply.createdAt)}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
-                          {replyHasMore[comment._id] && (
-                            <button
-                              className="text-xs text-blue-500 hover:underline ml-8"
-                              onClick={() => handleLoadMoreReplies(comment)}
-                            >
-                              Xem thêm phản hồi
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {replyingTo?._id === comment._id && (
-                    <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
-                      <div className="flex items-center space-x-2">
-                        <img
-                          src={profile?.avatarUrl || "/default-avatar.png"}
-                          alt="Your avatar"
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                        <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          <input
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            placeholder="Viết phản hồi..."
-                            className="w-full bg-transparent focus:outline-none text-xs"
-                          />
-                          <div className="flex space-x-2">
-                            {!replyImagePreview && (
-                              <label className="cursor-pointer text-blue-500">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleReplyImageUpload}
-                                  className="hidden"
-                                />
-                                <ImageIcon size={16} />
-                              </label>
-                            )}
-                            <button
-                              type="submit"
-                              disabled={isSubmittingReply || (!replyContent.trim() && !replyImagePreview)}
-                              className="text-blue-500 disabled:text-gray-400"
-                            >
-                              {isSubmittingReply ? (
-                                <Loader2 className="animate-spin" size={16} />
-                              ) : (
-                                <Send size={16} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {replyImagePreview && (
-                        <div className="relative mt-1 ml-8 inline-block">
-                          <img
-                            src={replyImagePreview}
-                            alt="Preview"
-                            className="max-h-24 rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setReplyImagePreview(null)}
-                            className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 text-white rounded-full"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      )}
-                    </form>
-                  )}
+                  <p className="text-xs text-gray-500">
+                    {formatTime(post.createdAt)}
+                  </p>
                 </div>
               </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="animate-spin text-blue-500" size={24} />
+              
+              <div className="relative">
+                <p 
+                  ref={contentRef}
+                  className={`text-gray-800 text-sm mb-3 whitespace-pre-wrap ${
+                    !isContentExpanded && showReadMore ? 'line-clamp-3' : ''
+                  }`}
+                >
+                  {post.content}
+                </p>
+                {showReadMore && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsContentExpanded(!isContentExpanded);
+                    }}
+                    className="text-blue-500 text-sm font-medium hover:underline mb-3"
+                  >
+                    {isContentExpanded ? 'Thu gọn' : 'Đọc thêm'}
+                  </button>
+                )}
               </div>
-            )}
-            <div ref={commentsEndRef} />
+              
+              {renderImageGallery()}
+              
+              <div className="flex items-center justify-between text-xs text-gray-500 py-2 border-t border-b">
+                <div className="flex items-center space-x-1">
+                  {post.totalReactions > 0 && (
+                    <>
+                      <div className="flex items-center space-x-1">
+                        <div className="bg-blue-500 rounded-full p-1">
+                          <ThumbsUp size={10} className="text-white" />
+                        </div>
+                        <span>{post.totalReactions}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex space-x-3">
+                  <span>{post.totalComments || 0} bình luận</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between py-1">
+                <button 
+                  onClick={handleToggleLike}
+                  className={`flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 ${
+                    isLiked ? 'text-blue-500' : 'text-gray-500'
+                  }`}
+                >
+                  <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
+                  <span className="text-sm font-medium">
+                    {isLiked ? 'Đã thích' : 'Thích'}
+                  </span>
+                </button>
+                
+                <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                  <MessageCircle size={18} />
+                  <span className="text-sm font-medium">Bình luận</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 space-y-3 bg-gray-50">
+              {comments.map((comment, index) => (
+                <div key={`${comment._id}-${index}`} className="flex space-x-2">
+                  <img
+                    src={comment.user.avatarUrl || '/default-avatar.png'}
+                    alt={comment.user.displayName}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="bg-gray-100 rounded-2xl p-3 inline-block">
+                      <p className="font-semibold text-sm">{comment.user.displayName}</p>
+                      <p className="text-sm">{comment.content}</p>
+                      {comment.imageUrl && (
+                        <img 
+                          src={comment.imageUrl} 
+                          alt="Comment image" 
+                          className="mt-2 rounded-lg max-h-48 object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 mt-1 px-2">
+                      <button 
+                        className={`text-xs font-medium hover:underline ${
+                          comment.isReacted ? 'text-blue-500' : ''
+                        }`}
+                        onClick={() => handleCommentReaction(comment)}
+                      >
+                        Thích {comment.totalCommentReactions > 0 && `(${comment.totalCommentReactions})`}
+                      </button>
+                      <button 
+                        className="text-xs font-medium hover:underline"
+                        onClick={() => handleReplyClick(comment)}
+                      >
+                        Phản hồi
+                      </button>
+                      <p className="text-xs text-gray-500">
+                        {formatTime(comment.createdAt)}
+                      </p>
+                      {comment.isUpdated === 1 && (
+                        <span className="text-xs text-gray-400">đã chỉnh sửa</span>
+                      )}
+                    </div>
+
+                    {(comment.totalChildren ?? 0) > 0 && (
+                      <div className="mt-2 ml-4">
+                        <button
+                          className="text-xs text-blue-500 hover:underline"
+                          onClick={() => handleToggleReplies(comment)}
+                        >
+                          {expandedReplies.has(comment._id) ? 'Ẩn phản hồi' : `Xem ${comment.totalChildren} phản hồi`}
+                        </button>
+
+                        {expandedReplies.has(comment._id) && commentReplies[comment._id] && (
+                          <div className="mt-2 space-y-2">
+                            {commentReplies[comment._id].map((reply, replyIndex) => (
+                              <div key={`${reply._id}-${replyIndex}`} className="flex space-x-2">
+                                <img
+                                  src={reply.user.avatarUrl || '/default-avatar.png'}
+                                  alt={reply.user.displayName}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                                <div className="flex-1">
+                                  <div className="bg-gray-100 rounded-2xl p-2 inline-block">
+                                    <p className="font-semibold text-xs">{reply.user.displayName}</p>
+                                    <p className="text-xs">{reply.content}</p>
+                                    {reply.imageUrl && (
+                                      <img 
+                                        src={reply.imageUrl} 
+                                        alt="Reply image" 
+                                        className="mt-1 rounded-lg max-h-32 object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2 mt-1 px-2">
+                                    <button 
+                                      className={`text-xs font-medium hover:underline ${
+                                        reply.isReacted ? 'text-blue-500' : ''
+                                      }`}
+                                      onClick={() => handleCommentReaction(reply)}
+                                    >
+                                      Thích {reply.totalCommentReactions > 0 && `(${reply.totalCommentReactions})`}
+                                    </button>
+                                    <p className="text-xs text-gray-500">
+                                      {formatTime(reply.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            {replyHasMore[comment._id] && (
+                              <button
+                                className="text-xs text-blue-500 hover:underline ml-8"
+                                onClick={() => handleLoadMoreReplies(comment)}
+                              >
+                                Xem thêm phản hồi
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {replyingTo?._id === comment._id && (
+                      <form onSubmit={handleSubmitReply} className="mt-2 ml-4">
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={profile?.avatarUrl || "/default-avatar.png"}
+                            alt="Your avatar"
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                          <div className="flex-1 flex items-center bg-gray-100 rounded-full px-3 py-1">
+                            <input
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              placeholder="Viết phản hồi..."
+                              className="w-full bg-transparent focus:outline-none text-xs"
+                            />
+                            <div className="flex space-x-2">
+                              {!replyImagePreview && (
+                                <label className="cursor-pointer text-blue-500">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleReplyImageUpload}
+                                    className="hidden"
+                                  />
+                                  <ImageIcon size={16} />
+                                </label>
+                              )}
+                              <button
+                                type="submit"
+                                disabled={isSubmittingReply || (!replyContent.trim() && !replyImagePreview)}
+                                className="text-blue-500 disabled:text-gray-400"
+                              >
+                                {isSubmittingReply ? (
+                                  <Loader2 className="animate-spin" size={16} />
+                                ) : (
+                                  <Send size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {replyImagePreview && (
+                          <div className="relative mt-1 ml-8 inline-block">
+                            <img
+                              src={replyImagePreview}
+                              alt="Preview"
+                              className="max-h-24 rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setReplyImagePreview(null)}
+                              className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 text-white rounded-full"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </form>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="animate-spin text-blue-500" size={24} />
+                </div>
+              )}
+              <div ref={commentsEndRef} />
+            </div>
           </div>
 
-          <form onSubmit={handleSubmitComment} className="p-3 border-t bg-white">
+          <form onSubmit={handleSubmitComment} className="p-3 border-t bg-white flex-shrink-0">
             <div className="flex items-center space-x-2">
               <img
                 src={profile?.avatarUrl || "/default-avatar.png"}

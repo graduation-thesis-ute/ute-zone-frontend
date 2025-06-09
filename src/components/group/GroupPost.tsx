@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ThumbsUp, MessageCircle, MoreHorizontal } from 'lucide-react';
 import GroupPostDetailDialog from './GroupPostDetailDialog';
 
 interface GroupPostProps {
@@ -29,6 +29,18 @@ interface GroupPostProps {
 
 const GroupPost: React.FC<GroupPostProps> = ({ post, onPostUpdated }) => {
     const [isDetailVisible, setIsDetailVisible] = useState(false);
+    const [isContentExpanded, setIsContentExpanded] = useState(false);
+    const contentRef = useRef<HTMLParagraphElement>(null);
+    const [showReadMore, setShowReadMore] = useState(false);
+
+    useEffect(() => {
+        if (contentRef.current) {
+            const lineHeight = parseInt(window.getComputedStyle(contentRef.current).lineHeight);
+            const height = contentRef.current.scrollHeight;
+            const maxHeight = lineHeight * 3; // Show 3 lines by default
+            setShowReadMore(height > maxHeight);
+        }
+    }, [post.content]);
 
     // Format date
     const formatDate = (dateString: string) => {
@@ -74,7 +86,28 @@ const GroupPost: React.FC<GroupPostProps> = ({ post, onPostUpdated }) => {
 
                 {/* Post Content */}
                 <div className="px-4 pb-4">
-                    <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">{post.content}</p>
+                    <div className="relative">
+                        <p 
+                            ref={contentRef}
+                            className={`text-gray-800 text-sm mb-3 whitespace-pre-wrap ${
+                                !isContentExpanded && showReadMore ? 'line-clamp-3' : ''
+                            }`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {post.content}
+                        </p>
+                        {showReadMore && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsContentExpanded(!isContentExpanded);
+                                }}
+                                className="text-blue-500 text-sm font-medium hover:underline mb-3"
+                            >
+                                {isContentExpanded ? 'Thu gọn' : 'Đọc thêm'}
+                            </button>
+                        )}
+                    </div>
                     
                     {/* Image Gallery */}
                     {post.imageUrls && post.imageUrls.length > 0 && (
@@ -110,23 +143,30 @@ const GroupPost: React.FC<GroupPostProps> = ({ post, onPostUpdated }) => {
                         </div>
                         <div className="flex space-x-3">
                             <span>{post.totalComments || 0} bình luận</span>
-                            <span>{post.totalShares || 0} lượt chia sẻ</span>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex justify-between py-1">
-                        <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                        <button 
+                            className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Add your like handling logic here if needed
+                            }}
+                        >
                             <ThumbsUp size={18} />
                             <span className="text-sm font-medium">Thích</span>
                         </button>
-                        <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
+                        <button 
+                            className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetail();
+                            }}
+                        >
                             <MessageCircle size={18} />
                             <span className="text-sm font-medium">Bình luận</span>
-                        </button>
-                        <button className="flex items-center justify-center space-x-2 py-2 flex-1 rounded-md hover:bg-gray-100 text-gray-500">
-                            <Share2 size={18} />
-                            <span className="text-sm font-medium">Chia sẻ</span>
                         </button>
                     </div>
                 </div>
