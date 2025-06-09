@@ -86,8 +86,23 @@ const PostDetailDialog: React.FC<PostDetailDialogProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      // Reset all states when dialog opens
       setComments([]);
       setCurrentPage(0);
+      setNewComment('');
+      setImagePreview(null);
+      setSelectedImageIndex(null);
+      setReplyingTo(null);
+      setReplyContent('');
+      setReplyImagePreview(null);
+      setExpandedReplies(new Set());
+      setReplyPages({});
+      setReplyHasMore({});
+      setCommentReplies({});
+      setIsContentExpanded(false);
+      setIsLiked(false);
+      
+      // Fetch new data
       fetchComments();
       checkIfLiked();
     }
