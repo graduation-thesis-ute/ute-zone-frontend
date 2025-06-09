@@ -95,7 +95,7 @@ const Chatbot = () => {
       setMessages([
         {
           type: "bot",
-          content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+          content: "Xin chào☀️\nMình có thể giúp gì cho bạn?",
         },
         ...historyMessages,
       ]);
@@ -125,7 +125,7 @@ const Chatbot = () => {
       setMessages([
         {
           type: "bot",
-          content: "Chào buổi sáng ☀️\nMình có thể giúp gì cho bạn?",
+          content: "Xin chào ☀️\nMình có thể giúp gì cho bạn?",
         },
       ]);
 
