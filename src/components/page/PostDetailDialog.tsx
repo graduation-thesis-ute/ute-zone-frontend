@@ -12,12 +12,12 @@ import {
   ThumbsUp, 
   MessageCircle, 
   MoreHorizontal,
-  Heart,
-  Laugh,
-  AlertCircle,
-  Frown,
-  Angry,
-  Smile
+  // Heart,
+  // Laugh,
+  // AlertCircle,
+  // Frown,
+  // Angry,
+  // Smile
 } from 'lucide-react';
 import { uploadImage2 } from '../../types/utils';
 

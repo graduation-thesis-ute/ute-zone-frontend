@@ -28,8 +28,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
     coverImage,
     avatar,
     onGroupClick,
-    onSettingsClick,
-    onEditClick,
+    //onSettingsClick,
+   // onEditClick,
     onDeleteClick,
     onGroupUpdated
 }) => {

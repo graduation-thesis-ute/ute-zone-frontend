@@ -8,14 +8,14 @@ import {
   Image as ImageIcon,
   ThumbsUp,
   MessageCircle,
-  Share2,
+  //Share2,
   MoreHorizontal,
-  Heart,
-  Laugh,
-  AlertCircle,
-  Frown,
-  Angry,
-  Smile
+  // Heart,
+  // Laugh,
+  // AlertCircle,
+  // Frown,
+  // Angry,
+  //Smile
 } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { uploadImage2 } from '../../types/utils';
@@ -101,15 +101,15 @@ const GroupPostDetailDialog: React.FC<GroupPostDetailDialogProps> = ({
   const contentRef = useRef<HTMLParagraphElement>(null);
   const [showReadMore, setShowReadMore] = useState(false);
 
-  const reactionTypes = [
-    { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
-    { type: 2, icon: Heart, label: 'Yêu thích', color: 'text-red-500' },
-    { type: 3, icon: Laugh, label: 'Haha', color: 'text-yellow-500' },
-    { type: 4, icon: AlertCircle, label: 'Wow', color: 'text-purple-500' },
-    { type: 5, icon: Frown, label: 'Buồn', color: 'text-gray-500' },
-    { type: 6, icon: Angry, label: 'Phẫn nộ', color: 'text-orange-500' },
-    { type: 7, icon: Smile, label: 'Thương thương', color: 'text-pink-500' }
-  ];
+  // const reactionTypes = [
+  //   { type: 1, icon: ThumbsUp, label: 'Thích', color: 'text-blue-500' },
+  //   { type: 2, icon: Heart, label: 'Yêu thích', color: 'text-red-500' },
+  //   { type: 3, icon: Laugh, label: 'Haha', color: 'text-yellow-500' },
+  //   { type: 4, icon: AlertCircle, label: 'Wow', color: 'text-purple-500' },
+  //   { type: 5, icon: Frown, label: 'Buồn', color: 'text-gray-500' },
+  //   { type: 6, icon: Angry, label: 'Phẫn nộ', color: 'text-orange-500' },
+  //   { type: 7, icon: Smile, label: 'Thương thương', color: 'text-pink-500' }
+  // ];
 
   useEffect(() => {
     if (isOpen) {

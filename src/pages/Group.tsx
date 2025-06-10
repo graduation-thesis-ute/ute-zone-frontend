@@ -22,7 +22,7 @@ const Group: React.FC<GroupProps> = ({ groupId, setSelectedGroupType }) => {
             try {
                 // Chỉ fetch khi groupId là một ID hợp lệ và không phải là tab community
                 if (groupId && groupId !== "my-groups" && groupId !== "joined-groups" && groupId !== "community" && !groupId.startsWith("community")) {
-                    const response = await get(`/v1/group/get/${groupId}`);
+                  //  const response = await get(`/v1/group/get/${groupId}`);
                     //setGroupData(response.data);
                 }
             } catch (error) {
