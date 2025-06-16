@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Check } from 'lucide-react';
 import useFetch from '../../hooks/useFetch';
 import { useProfile } from '../../types/UserContext';
+import { toast } from 'react-toastify';
 
 interface Group {
     _id: string;
@@ -43,14 +44,49 @@ interface GroupMemberResponse {
     totalElements: number;
 }
 
+interface GroupJoinRequest {
+    _id: string;
+    group: {
+        _id: string;
+    };
+    status: number;
+}
+
+interface GroupJoinRequestResponse {
+    content: GroupJoinRequest[];
+    totalPages: number;
+    totalElements: number;
+}
+
 const SuggestedGroups: React.FC = () => {
     const [suggestedGroups, setSuggestedGroups] = useState<Group[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [requestedGroups, setRequestedGroups] = useState<Set<string>>(new Set());
     const { get, post } = useFetch();
     const { profile } = useProfile();
 
+    // Fetch join requests status
+    const fetchJoinRequests = async () => {
+        if (!profile?._id) return new Set<string>();
+        
+        try {
+            const response = await get('/v1/group-join-request/list', {
+                user: profile._id,
+                status: '0' // Pending requests
+            });
+            if (response.data?.content) {
+                return new Set<string>(
+                    (response.data as GroupJoinRequestResponse).content.map(request => request.group._id)
+                );
+            }
+        } catch (error) {
+            console.error('Error fetching join requests:', error);
+        }
+        return new Set<string>();
+    };
+
     useEffect(() => {
-        const fetchGroups = async () => {
+        const fetchData = async () => {
             try {
                 setIsLoading(true);
                 if (!profile?._id) {
@@ -58,6 +94,11 @@ const SuggestedGroups: React.FC = () => {
                     return;
                 }
 
+                // Fetch join requests first
+                const pendingRequests = await fetchJoinRequests();
+                setRequestedGroups(pendingRequests);
+
+                // Then fetch suggested groups
                 const suggestedResponse = await get('/v1/group/list');
                 if (!suggestedResponse.data) return;
 
@@ -87,15 +128,42 @@ const SuggestedGroups: React.FC = () => {
             }
         };
 
-        fetchGroups();
+        fetchData();
     }, [get, profile]);
 
-    const handleJoinGroup = async (groupId: string) => {
+    const handleJoinGroup = async (groupId: string, isPublic: boolean) => {
         try {
             await post('/v1/group-join-request/send', { groupId });
-            setSuggestedGroups(prev => prev.filter(group => group._id !== groupId));
+            
+            if (isPublic) {
+                // For public groups, remove from suggested list
+                setSuggestedGroups(prev => prev.filter(group => group._id !== groupId));
+            } else {
+                // For private groups, show "requested" status
+                setRequestedGroups(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(groupId);
+                    return newSet;
+                });
+            }
+            
+            toast.success(
+                isPublic ? 'Tham gia nhóm thành công!' : 'Đã gửi yêu cầu tham gia nhóm!',
+                {
+                    position: "top-right",
+                    autoClose: 2000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                }
+            );
         } catch (error) {
             console.error('Error joining group:', error);
+            toast.error('Không thể tham gia nhóm. Vui lòng thử lại!', {
+                position: "top-right",
+                autoClose: 3000,
+            });
         }
     };
 
@@ -118,44 +186,55 @@ const SuggestedGroups: React.FC = () => {
             
             {suggestedGroups.length > 0 ? (
                 <div className="space-y-3">
-                    {suggestedGroups.map((group) => (
-                        <div 
-                            key={group._id}
-                            className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow duration-200"
-                        >
-                            <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                                    {group.avatarUrl ? (
-                                        <img 
-                                            src={group.avatarUrl} 
-                                            alt={group.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Users className="w-6 h-6 text-gray-400" />
+                    {suggestedGroups.map((group) => {
+                        const hasRequested = requestedGroups.has(group._id);
+                        const isPublic = group.privacy === 1;
+
+                        // Skip rendering if it's a public group that has been joined
+                        if (isPublic && hasRequested) return null;
+
+                        return (
+                            <div 
+                                key={group._id}
+                                className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow duration-200"
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                        {group.avatarUrl ? (
+                                            <img 
+                                                src={group.avatarUrl} 
+                                                alt={group.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Users className="w-6 h-6 text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-medium text-gray-900 truncate">{group.name}</h3>
+                                        <p className="text-sm text-gray-500">{group.members} thành viên</p>
+                                    </div>
+
+                                    {hasRequested && !isPublic ? (
+                                        <div className="flex-shrink-0 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-600 flex items-center">
+                                            <Check size={16} className="mr-1" />
+                                            Đã gửi yêu cầu
                                         </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleJoinGroup(group._id, isPublic)}
+                                            className="flex-shrink-0 px-4 py-2 rounded-md text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200"
+                                        >
+                                            {isPublic ? 'Tham gia' : 'Yêu cầu tham gia'}
+                                        </button>
                                     )}
                                 </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-medium text-gray-900 truncate">{group.name}</h3>
-                                    <p className="text-sm text-gray-500">{group.members} thành viên</p>
-                                </div>
-
-                                <button
-                                    onClick={() => handleJoinGroup(group._id)}
-                                    className={`flex-shrink-0 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                                        group.privacy === 1 
-                                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                                            : 'bg-blue-500 hover:bg-blue-600 text-white'
-                                    }`}
-                                >
-                                    {group.privacy === 1 ? 'Tham gia' : 'Yêu cầu tham gia'}
-                                </button>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-6">

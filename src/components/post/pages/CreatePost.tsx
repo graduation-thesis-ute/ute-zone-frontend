@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ImageUpIcon } from "lucide-react";
+import { ImageUpIcon, X } from "lucide-react";
 import { toast } from "react-toastify";
 import useForm from "../../../hooks/useForm";
 import useFetch from "../../../hooks/useFetch";
@@ -72,6 +72,10 @@ const CreatePost = ({
     });
   };
 
+  const handleRemoveImage = (index: number) => {
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreate = async () => {
     if (isValidForm()) {
       const imageUrls = await Promise.all(
@@ -87,6 +91,9 @@ const CreatePost = ({
 
       if (res.result) {
         toast.success("Thêm bài viết thành công");
+        setForm({ content: "", imageUrls: [] });
+        setImagePreviews([]);
+        setKind(1);
         setVisible(false);
         onButtonClick();
       } else {
@@ -96,6 +103,20 @@ const CreatePost = ({
       toast.error("Vui lòng kiểm tra lại thông tin");
     }
   };
+
+  useEffect(() => {
+    if (isVisible) {
+      setForm({ 
+        content: selectedEmotion 
+          ? `Đang cảm thấy ${selectedEmotion.emotion} ${selectedEmotion.icon}` 
+          : "", 
+        imageUrls: [] 
+      });
+      setImagePreviews([]);
+      setKind(1);
+      setErrors({});
+    }
+  }, [isVisible, selectedEmotion]);
 
   if (!isVisible) return null;
 
@@ -156,13 +177,25 @@ const CreatePost = ({
             />
             <div className="flex flex-col items-center justify-center">
               {imagePreviews.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 w-full">
                   {imagePreviews.map((preview, index) => (
-                    <img
-                      key={index}
-                      src={preview}
-                      className="max-w-full object-contain rounded-lg"
-                    />
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        className="w-full h-40 object-cover rounded-lg"
+                        alt={`Preview ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage(index);
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               ) : (

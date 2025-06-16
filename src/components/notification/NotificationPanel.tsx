@@ -56,6 +56,7 @@ const NotificationPanel = () => {
   const [totalPages, setTotalPages] = useState(0);
   const { profile } = useProfile();
   const PAGE_SIZE = 10;
+  const originalTitleRef = useRef(document.title);
 
   const fetchNotifications = useCallback( async (pageNumber: number) => {
     try {
@@ -172,6 +173,33 @@ const NotificationPanel = () => {
     onNewNotification: handleNewNotification,
 
   })
+
+  useEffect(() => {
+    // Restore original title when component unmounts
+    return () => {
+      document.title = originalTitleRef.current;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Update browser tab title with latest unread notification
+    const unreadNotifications = notifications.filter(n => n.status === 1);
+    const latestUnread = unreadNotifications.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+
+    if (latestUnread) {
+      // Truncate message if too long (max 30 characters)
+      const truncatedMessage = latestUnread.message.length > 30 
+        ? latestUnread.message.substring(0, 30) + '...' 
+        : latestUnread.message;
+      
+      document.title = `(${unreadNotifications.length}) ${truncatedMessage} - ${originalTitleRef.current}`;
+    } else {
+      document.title = originalTitleRef.current;
+    }
+  }, [notifications]);
+
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow">
       <div className="p-4 border-b">

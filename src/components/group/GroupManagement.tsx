@@ -24,6 +24,7 @@ import useDialog from '../../hooks/useDialog';
 import UpdateGroupDialog from './UpdateGroupDialog';
 import CreateGroupPostDialog from './CreateGroupPostDialog';
 import GroupPost from './GroupPost';
+import AddMemberDialog from './AddMemberDialog';
 
 interface GroupData {
     _id: string;
@@ -123,52 +124,57 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
     const [isPostsLoading, setIsPostsLoading] = useState(false);
     const [isPendingPostsLoading, setIsPendingPostsLoading] = useState(false);
     const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
+    const [isAddMemberDialogVisible, setIsAddMemberDialogVisible] = useState(false);
+    const [selectedMemberToRemove, setSelectedMemberToRemove] = useState<GroupMember | null>(null);
+    const [isRemoveMemberDialogVisible, setIsRemoveMemberDialogVisible] = useState(false);
 
     useEffect(() => {
-        const fetchGroupData = async () => {
+        const fetchAllData = async () => {
             try {
+                setIsLoading(true);
                 if (!isValidObjectId(groupId)) {
                     console.error('Invalid group ID');
                     return;
                 }
-                const response = await get(`/v1/group/get/${groupId}`);
-                setGroup(response.data);
+
+                // Fetch group data
+                const groupResponse = await get(`/v1/group/get/${groupId}`);
+                setGroup(groupResponse.data);
+
+                // Fetch members
+                const membersResponse = await get('/v1/group-member/list', { group: groupId });
+                const memberResponse = membersResponse.data as GroupMemberResponse;
+                setMembers(memberResponse.content);
+                
+                // Check if current user is the group owner
+                const currentUserMember = memberResponse.content.find(
+                    member => member.user._id === profile?._id
+                );
+                setIsOwner(currentUserMember?.role === 1);
+                setUserRole(currentUserMember?.role || null);
+
+                // Fetch posts
+                const postsResponse = await get('/v1/group-post/list', { groupId, status: 2 });
+                const postResponse = postsResponse.data as GroupPostResponse;
+                setPosts(postResponse.content);
+
+                // Fetch pending posts if user is admin or owner
+                if (currentUserMember?.role !== 3) {
+                    const pendingPostsResponse = await get('/v1/group-post/list', { groupId, status: 1 });
+                    const pendingPostResponse = pendingPostsResponse.data as GroupPostResponse;
+                    setPendingPosts(pendingPostResponse.content);
+                }
+
             } catch (error) {
-                console.error('Error fetching group data:', error);
+                console.error('Error fetching data:', error);
+                toast.error('Có lỗi xảy ra khi tải dữ liệu nhóm');
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchGroupData();
-    }, [groupId, get]);
-
-    useEffect(() => {
-        const fetchMembers = async () => {
-            if (activeTab === 'members') {
-                try {
-                    setIsMembersLoading(true);
-                    const response = await get('/v1/group-member/list', { group: groupId });
-                    const memberResponse = response.data as GroupMemberResponse;
-                    setMembers(memberResponse.content);
-                   // setMemberCount(memberResponse.totalElements);
-                    
-                    // Check if current user is the group owner
-                    const currentUserMember = memberResponse.content.find(
-                        member => member.user._id === profile?._id
-                    );
-                    setIsOwner(currentUserMember?.role === 1);
-                    setUserRole(currentUserMember?.role || null);
-                } catch (error) {
-                    console.error('Error fetching members:', error);
-                } finally {
-                    setIsMembersLoading(false);
-                }
-            }
-        };
-
-        fetchMembers();
-    }, [activeTab, groupId, get, profile]);
+        fetchAllData();
+    }, [groupId, get, profile]);
 
     const fetchPosts = async () => {
         try {
@@ -178,6 +184,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
             setPosts(postResponse.content);
         } catch (error) {
             console.error('Error fetching posts:', error);
+            toast.error('Có lỗi xảy ra khi tải bài viết');
         } finally {
             setIsPostsLoading(false);
         }
@@ -187,9 +194,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         try {
             setIsPendingPostsLoading(true);
             const response = await get('/v1/group-post/list', { groupId, status: 1 });
-            console.log('API Response:', response);
             const postResponse = response.data as GroupPostResponse;
-            console.log('Pending Posts Data:', postResponse);
             setPendingPosts(postResponse.content);
         } catch (error) {
             console.error('Error fetching pending posts:', error);
@@ -198,14 +203,6 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
             setIsPendingPostsLoading(false);
         }
     };
-
-    useEffect(() => {
-        if (activeTab === 'posts') {
-            fetchPosts();
-        } else if (activeTab === 'pending-posts') {
-            fetchPendingPosts();
-        }
-    }, [activeTab, groupId]);
 
     const handleUpdateRole = async (memberId: string, newRole: number) => {
         try {
@@ -240,11 +237,21 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         try {
             await del(`/v1/group-member/delete`, { groupMemberId: memberId });
             // Refresh member list
-            const response = await get('/v1/group-member/list', { groupId });
-            setMembers(response.data);
+            const response = await get('/v1/group-member/list', { group: groupId });
+            const memberResponse = response.data as GroupMemberResponse;
+            setMembers(memberResponse.content);
+            toast.success('Đã xóa thành viên khỏi nhóm');
+            setIsRemoveMemberDialogVisible(false);
+            setSelectedMemberToRemove(null);
         } catch (error) {
             console.error('Error removing member:', error);
+            toast.error('Có lỗi xảy ra khi xóa thành viên');
         }
+    };
+
+    const handleRemoveClick = (member: GroupMember) => {
+        setSelectedMemberToRemove(member);
+        setIsRemoveMemberDialogVisible(true);
     };
 
     const getRoleName = (role: number) => {
@@ -477,12 +484,33 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
         { id: 'files', label: 'Tệp', icon: FileText }
     ];
 
+    const handleMemberAdded = () => {
+        // Refresh member list
+        const fetchMembers = async () => {
+            try {
+                setIsMembersLoading(true);
+                const response = await get('/v1/group-member/list', { group: groupId });
+                const memberResponse = response.data as GroupMemberResponse;
+                setMembers(memberResponse.content);
+            } catch (error) {
+                console.error('Error fetching members:', error);
+                toast.error('Có lỗi xảy ra khi tải danh sách thành viên');
+            } finally {
+                setIsMembersLoading(false);
+            }
+        };
+        fetchMembers();
+    };
+
     const renderMembersContent = () => (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Thành viên nhóm</h2>
                 {userRole !== 3 && (
-                    <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                    <button 
+                        onClick={() => setIsAddMemberDialogVisible(true)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    >
                         <UserPlus className="w-5 h-5 mr-2 inline-block" />
                         Thêm thành viên
                     </button>
@@ -533,7 +561,7 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                                         <>
                                             {renderRoleDropdown(member)}
                                             <button 
-                                                onClick={() => handleRemoveMember(member._id)}
+                                                onClick={() => handleRemoveClick(member)}
                                                 className="p-2 text-red-500 hover:bg-red-50 rounded-full"
                                                 title="Xóa khỏi nhóm"
                                             >
@@ -863,6 +891,24 @@ const GroupManagement: React.FC<GroupManagementProps> = ({ groupId }) => {
                 onClose={() => setIsCreatePostDialogVisible(false)}
                 onPostCreated={handlePostCreated}
                 groupId={groupId}
+            />
+            <AddMemberDialog
+                isVisible={isAddMemberDialogVisible}
+                onClose={() => setIsAddMemberDialogVisible(false)}
+                onMemberAdded={handleMemberAdded}
+                groupId={groupId}
+            />
+            <ConfimationDialog
+                isVisible={isRemoveMemberDialogVisible}
+                title="Xác nhận xóa thành viên"
+                message={`Bạn có chắc chắn muốn xóa ${selectedMemberToRemove?.user.displayName} khỏi nhóm?`}
+                onConfirm={() => selectedMemberToRemove && handleRemoveMember(selectedMemberToRemove._id)}
+                confirmText="Xóa"
+                onCancel={() => {
+                    setIsRemoveMemberDialogVisible(false);
+                    setSelectedMemberToRemove(null);
+                }}
+                color="red"
             />
         </div>
     );

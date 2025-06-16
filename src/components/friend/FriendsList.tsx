@@ -31,11 +31,13 @@ const FriendsList = () => {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
  // const [activeSection, setActiveSection] = useState("messages");
   const [profileData, setProfileData] = useState<Profile | null>(null);
+  const [friendships, setFriendships] = useState<any[]>([]);
   
   //const defaultAvatar = 'https://via.placeholder.com/150';
 
   useEffect(() => {
     fetchFriends();
+    fetchFriendships();
   }, []);
 
   const fetchFriends = async () => {
@@ -57,7 +59,32 @@ const FriendsList = () => {
       hideLoading();
     }
   };
-  
+
+  const fetchFriendships = async () => {
+    try {
+      const response = await get(`/v1/friendship/list`, {
+        getListKind: 1,
+      });
+      const response2 = await get(`/v1/friendship/list`, {
+        getListKind: 2,
+      });
+      const response3 = await get(`/v1/friendship/list`, {
+        getListKind: 3,
+      });
+      
+      if (response.result && response2.result && response3.result) {
+        const allFriendships = [
+          ...response.data.content,
+          ...response2.data.content,
+          ...response3.data.content
+        ];
+        setFriendships(allFriendships);
+      }
+    } catch (error: any) {
+      console.log("Error fetching friendships:", error);
+      toast.error(error.message);
+    }
+  };
 
   const filteredFriends = friends
     .filter((friend) =>
@@ -149,7 +176,7 @@ const FriendsList = () => {
       }
 
       toast.success('Đã xóa bạn bè thành công');
-      setFriends(friends.filter(friend => friend._id !== friendshipId));
+      await Promise.all([fetchFriends(), fetchFriendships()]); // Cập nhật cả danh sách bạn bè và friendships
     } catch (error) {
       console.error('Lỗi khi xóa bạn bè:', error);
       toast.error('Có lỗi xảy ra khi xóa bạn bè');
@@ -299,8 +326,15 @@ const FriendsList = () => {
 
       <AddFriend
         isOpen={isAddFriendOpen}
-        onClose={() => setIsAddFriendOpen(false)}
+        onClose={async () => {
+          setIsAddFriendOpen(false);
+          await fetchFriends();
+        }}
+        onOpen={async () => {
+          await Promise.all([fetchFriends(), fetchFriendships()]);
+        }}
         updateFriendsList={updateFriendsList}
+        friendships={friendships} // Truyền danh sách friendships vào AddFriend
       />
       <LoadingDialog isVisible={isLoading} />
     </div>
