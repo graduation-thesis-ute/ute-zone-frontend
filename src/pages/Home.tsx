@@ -74,16 +74,74 @@ const Home = () => {
   const [selectedChatbotConversation, setSelectedChatbotConversation] =
     useState<any>(null);
 
-  /**
-   * Hàm toggle sidebar trên mobile
-   */
+  // ===== UI/Responsive Functions =====
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  /**
-   * Khởi tạo kết nối peer cho WebRTC
-   */
+  // ===== User & Conversation Management =====
+  const fetchUserCurrent = useCallback(async () => {
+    try {
+      const response = await get("/v1/user/profile");
+      setUserCurrent(response.data);
+    } catch (error) {
+      console.error("Error getting user id:", error);
+    }
+  }, [get]);
+
+  const fetchConversations = useCallback(async () => {
+    try {
+      const response = await get("/v1/conversation/list", { isPaged: 0 });
+      setConversations(response.data.content);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  }, [get]);
+
+  const handleConversationUpdate = useCallback(
+    async (updatedConversation: Conversation) => {
+      const response = await get(
+        `/v1/conversation/get/${updatedConversation._id}`
+      );
+      setSelectedConversation(response.data);
+    },
+    [get]
+  );
+
+  const handleLeaveGroup = useCallback(() => {
+    setSelectedConversation(null);
+  }, []);
+
+  const handleFowardToConversation = useCallback(
+    async (idConversation: string) => {
+      const response = await get(`/v1/conversation/get/${idConversation}`);
+      setSelectedConversation(response.data);
+    },
+    [get]
+  );
+
+  // ===== Message Handling Functions =====
+  const handleMessageChange = useCallback(() => {
+    if (selectedSection === "messages" && userCurrent) {
+      fetchConversations();
+    }
+  }, [fetchConversations, selectedSection, userCurrent]);
+
+  const handleNewMessageHome = useCallback(() => {
+    handleMessageChange();
+  }, [handleMessageChange]);
+
+  const handleUpdateMessageHome = useCallback(() => {
+    handleMessageChange();
+  }, [handleMessageChange]);
+
+  const handleDeleteMessageHome = useCallback(() => {
+    handleMessageChange();
+  }, [handleMessageChange]);
+
+  const handleUpdateConversation = useCallback(() => {}, []);
+
+  // ===== WebRTC/Video Call Functions =====
   const initializePeerConnection = () => {
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -122,61 +180,114 @@ const Home = () => {
     return pc;
   };
 
-  /**
-   * Cập nhật thông tin cuộc trò chuyện
-   */
-  const handleConversationUpdate = useCallback(
-    async (updatedConversation: Conversation) => {
-      const response = await get(
-        `/v1/conversation/get/${updatedConversation._id}`
-      );
-      setSelectedConversation(response.data);
-    },
-    [get]
-  );
-
-  /**
-   * Xử lý khi rời khỏi nhóm
-   */
-  const handleLeaveGroup = useCallback(() => {
-    setSelectedConversation(null);
-  }, []);
-
-  /**
-   * Chuyển hướng đến cuộc trò chuyện
-   */
-  const handleFowardToConversation = useCallback(
-    async (idConversation: string) => {
-      const response = await get(`/v1/conversation/get/${idConversation}`);
-      setSelectedConversation(response.data);
-    },
-    [get]
-  );
-
-  /**
-   * Lấy thông tin người dùng hiện tại
-   */
-  const fetchUserCurrent = useCallback(async () => {
-    try {
-      const response = await get("/v1/user/profile");
-      setUserCurrent(response.data);
-    } catch (error) {
-      console.error("Error getting user id:", error);
+  const createAnswer = async () => {
+    if (peerConnectionRef.current && isInfoComingCall) {
+      try {
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socketVideo?.emit("ANSWER", {
+          to: isInfoComingCall.callerId,
+          from: userCurrent?._id,
+          sdp: answer,
+        });
+      } catch (error) {
+        console.error("Home: Error creating answer:", error);
+      }
     }
-  }, [get]);
+  };
 
-  /**
-   * Lấy danh sách cuộc trò chuyện
-   */
-  const fetchConversations = useCallback(async () => {
+  const acceptCall = async () => {
+    if (!isInfoComingCall) return;
+
     try {
-      const response = await get("/v1/conversation/list", { isPaged: 0 });
-      setConversations(response.data.content);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-    }
-  }, [get]);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setLocalStream(stream);
+      const pc = initializePeerConnection();
 
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      socketVideo?.emit("ACCEPT_VIDEO_CALL", {
+        callerId: isInfoComingCall.callerId,
+        receiverId: userCurrent?._id,
+        receiverName: userCurrent?.displayName,
+        receiverAvatar: userCurrent?.avatarUrl,
+        conversationId: isInfoComingCall.conversationId,
+      });
+
+      setIsVideoCallActive(true);
+      setIsComingCall(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    } catch (error) {
+      console.error("Error accepting call:", error);
+      toast.error("Không thể truy cập camera hoặc micro.");
+    }
+  };
+
+  const rejectCall = () => {
+    if (isInfoComingCall) {
+      socketVideo?.emit("END_CALL_WHILE_CALLING_FROM_RECEIVER", {
+        callerId: isInfoComingCall.callerId,
+      });
+      setIsComingCall(false);
+      setIsInfoComingCall(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    }
+  };
+
+  const handleEndCallFromReceiver = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+
+    if (isInfoComingCall) {
+      socketVideo?.emit("END_VIDEO_CALL_FROM_RECEIVER", {
+        callerId: isInfoComingCall.callerId,
+      });
+      setIsInfoComingCall(null);
+    }
+    peerConnectionRef.current = null;
+  };
+
+  const handleEndCallFromCaller = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    setRemoteStream(null);
+    setIsVideoCallActive(false);
+    peerConnectionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    console.log("Call ended by caller HOME.");
+  };
+
+  // ===== Effects =====
   // Effect lấy thông tin người dùng khi component mount
   useEffect(() => {
     fetchUserCurrent();
@@ -222,30 +333,7 @@ const Home = () => {
     }
   }, [isComingCall]);
 
-  /**
-   * Các hàm xử lý tin nhắn
-   */
-  const handleMessageChange = useCallback(() => {
-    if (selectedSection === "messages" && userCurrent) {
-      fetchConversations();
-    }
-  }, [fetchConversations, selectedSection, userCurrent]);
-
-  const handleNewMessageHome = useCallback(() => {
-    handleMessageChange();
-  }, [handleMessageChange]);
-
-  const handleUpdateMessageHome = useCallback(() => {
-    handleMessageChange();
-  }, [handleMessageChange]);
-
-  const handleDeleteMessageHome = useCallback(() => {
-    handleMessageChange();
-  }, [handleMessageChange]);
-
-  const handleUpdateConversation = useCallback(() => {}, []);
-
-  // Khởi tạo socket cho chat
+  // ===== Socket Initialization =====
   const socketChat = useSocketChat({
     userId: userCurrent?._id,
     remoteUrl,
@@ -256,7 +344,6 @@ const Home = () => {
     onHandleUpdateConversation: handleUpdateConversation,
   });
 
-  // Khởi tạo socket cho video call
   const socketVideo = useSocketVideoCall({
     socket: socketChat,
     onIncomingVideoCall: (data: CallData) => {
@@ -323,116 +410,7 @@ const Home = () => {
     },
   });
 
-  /**
-   * Các hàm xử lý cuộc gọi video
-   */
-  const acceptCall = async () => {
-    if (!isInfoComingCall) return;
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      setLocalStream(stream);
-      const pc = initializePeerConnection();
-
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      socketVideo?.emit("ACCEPT_VIDEO_CALL", {
-        callerId: isInfoComingCall.callerId,
-        receiverId: userCurrent?._id,
-        receiverName: userCurrent?.displayName,
-        receiverAvatar: userCurrent?.avatarUrl,
-        conversationId: isInfoComingCall.conversationId,
-      });
-
-      setIsVideoCallActive(true);
-      setIsComingCall(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-    } catch (error) {
-      console.error("Error accepting call:", error);
-      toast.error("Không thể truy cập camera hoặc micro.");
-    }
-  };
-
-  const createAnswer = async () => {
-    if (peerConnectionRef.current && isInfoComingCall) {
-      try {
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
-        socketVideo?.emit("ANSWER", {
-          to: isInfoComingCall.callerId,
-          from: userCurrent?._id,
-          sdp: answer,
-        });
-      } catch (error) {
-        console.error("Home: Error creating answer:", error);
-      }
-    }
-  };
-
-  const rejectCall = () => {
-    if (isInfoComingCall) {
-      socketVideo?.emit("END_CALL_WHILE_CALLING_FROM_RECEIVER", {
-        callerId: isInfoComingCall.callerId,
-      });
-      setIsComingCall(false);
-      setIsInfoComingCall(null);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-    }
-  };
-
-  const handleEndCallFromReceiver = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-
-    setRemoteStream(null);
-    setIsVideoCallActive(false);
-
-    if (isInfoComingCall) {
-      socketVideo?.emit("END_VIDEO_CALL_FROM_RECEIVER", {
-        callerId: isInfoComingCall.callerId,
-      });
-      setIsInfoComingCall(null);
-    }
-    peerConnectionRef.current = null;
-  };
-
-  const handleEndCallFromCaller = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    setRemoteStream(null);
-    setIsVideoCallActive(false);
-    peerConnectionRef.current = null;
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    console.log("Call ended by caller HOME.");
-  };
-
+  // ===== Render =====
   return (
     <div className="flex h-screen">
       <NavBar setSelectedSection={setSelectedSection} />
