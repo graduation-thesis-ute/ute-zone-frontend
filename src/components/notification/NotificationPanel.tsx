@@ -57,6 +57,7 @@ const NotificationPanel = () => {
   const { profile } = useProfile();
   const PAGE_SIZE = 10;
   const originalTitleRef = useRef(document.title);
+  const titleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchNotifications = useCallback( async (pageNumber: number) => {
     try {
@@ -178,10 +179,18 @@ const NotificationPanel = () => {
     // Restore original title when component unmounts
     return () => {
       document.title = originalTitleRef.current;
+      if (titleTimeoutRef.current) {
+        clearTimeout(titleTimeoutRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
+    // Clear any existing timeout
+    if (titleTimeoutRef.current) {
+      clearTimeout(titleTimeoutRef.current);
+    }
+
     // Update browser tab title with latest unread notification
     const unreadNotifications = notifications.filter(n => n.status === 1);
     const latestUnread = unreadNotifications.sort(
@@ -195,6 +204,11 @@ const NotificationPanel = () => {
         : latestUnread.message;
       
       document.title = `(${unreadNotifications.length}) ${truncatedMessage} - ${originalTitleRef.current}`;
+      
+      // Set timeout to restore original title after 3 seconds
+      titleTimeoutRef.current = setTimeout(() => {
+        document.title = originalTitleRef.current;
+      }, 3000);
     } else {
       document.title = originalTitleRef.current;
     }
