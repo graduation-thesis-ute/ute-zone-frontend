@@ -157,40 +157,40 @@ const AddFriend: React.FC<AddFriendProps> = ({ isOpen, onClose, onOpen, updateFr
     }
   };
 
-  const fetchNewFriendship = async (senderId: string, receiverId: string) => {
-    try {
-      const response = await fetch(`${remoteUrl}/v1/friendship/list?getListKind=2`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
+  // const fetchNewFriendship = async (senderId: string, receiverId: string) => {
+  //   try {
+  //     const response = await fetch(`${remoteUrl}/v1/friendship/list?getListKind=2`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+  //       },
+  //     });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        toast.error(errorData.message);
-        return;
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       toast.error(errorData.message);
+  //       return;
+  //     }
 
-      const data = await response.json();
-      const newFriendship = data.data.content.find(
-        (friendship: Friendship) =>
-          friendship.sender?._id === senderId && friendship.receiver?._id === receiverId
-      );
+  //     const data = await response.json();
+  //     const newFriendship = data.data.content.find(
+  //       (friendship: Friendship) =>
+  //         friendship.sender?._id === senderId && friendship.receiver?._id === receiverId
+  //     );
 
-      if (newFriendship) {
-        console.log("New friendship _id:", newFriendship._id);
-        // Cập nhật state friendships với friendship mới
-        // setFriendships(prevFriendships => [...prevFriendships, newFriendship]);
-      } else {
-        console.log("Không tìm thấy friendship mới.");
-      }
+  //     if (newFriendship) {
+  //       console.log("New friendship _id:", newFriendship._id);
+  //       // Cập nhật state friendships với friendship mới
+  //       // setFriendships(prevFriendships => [...prevFriendships, newFriendship]);
+  //     } else {
+  //       console.log("Không tìm thấy friendship mới.");
+  //     }
 
-    } catch (error) {
-      console.error('Lỗi khi lấy friendship mới:', error);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Lỗi khi lấy friendship mới:', error);
+  //   }
+  // };
   const handleAcceptFriendRequest = async (friendshipId: string) => {
     showLoading();
     try {
