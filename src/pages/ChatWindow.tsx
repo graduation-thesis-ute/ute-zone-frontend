@@ -872,16 +872,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage && !selectedImage) return;
+
+    // Lưu tin nhắn và hình ảnh trước khi xóa
+    const messageToSend = newMessage;
+    const imageToSend = selectedImage;
+
+    // Xóa tin nhắn và hình ảnh ngay lập tức để tạo UX tốt hơn
+    setNewMessage("");
+    removeSelectedImage();
+
     setIsSendingMessage(true);
 
     let imageUrl: string | null = null;
-    if (selectedImage) {
-      imageUrl = await uploadImage(selectedImage, post);
+    if (imageToSend) {
+      imageUrl = await uploadImage(imageToSend, post);
     }
 
     try {
       const encryptedMessage = encrypt(
-        newMessage.trim(),
+        messageToSend.trim(),
         userCurrent?.secretKey
       );
       await post("/v1/message/create", {
@@ -889,10 +898,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         content: encryptedMessage,
         imageUrl: imageUrl,
       });
-      setNewMessage("");
-      removeSelectedImage();
     } catch (error) {
       console.error("Error sending message:", error);
+      // Nếu gửi thất bại, khôi phục lại tin nhắn và hình ảnh
+      setNewMessage(messageToSend);
+      if (imageToSend) {
+        setSelectedImage(imageToSend);
+      }
+      toast.error("Không thể gửi tin nhắn. Vui lòng thử lại.");
     } finally {
       setIsSendingMessage(false);
     }
